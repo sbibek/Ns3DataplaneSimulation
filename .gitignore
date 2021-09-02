@@ -1,0 +1,9 @@
+.config
+bake
+netanim*
+pybindgen*
+*.pyc
+*.diff
+*.orig
+*.patch
+*.rej
