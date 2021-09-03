@@ -27,8 +27,8 @@ CsmaHelper createCsmaHelper (std::string dataRate, std::string queueSize, int de
 int
 main (int argc, char *argv[])
 {
-  LogComponentEnable ("GtcpServer", LOG_LEVEL_INFO);
-  LogComponentEnable ("BulkSendApplication2", LOG_LEVEL_INFO);
+  LogComponentEnable ("GtcpServer", LOG_LEVEL_DEBUG);
+  LogComponentEnable ("BulkSendApplication2", LOG_LEVEL_DEBUG);
   LogComponentEnable ("GtcpClient", LOG_LEVEL_INFO);
 
 
@@ -246,7 +246,7 @@ main (int argc, char *argv[])
 
   GtcpServerHelper gtcpserverHelper(dataTransferPort);
   gtcpserverHelper.SetAttribute("WaitPeriod", TimeValue(Seconds(5)));
-  gtcpserverHelper.SetAttribute("TotalResponseBytes", UintegerValue(1024*10));
+  gtcpserverHelper.SetAttribute("TotalResponseBytes", UintegerValue(1024*1024));
 
   PacketSinkHelper packetSinkHelper ("ns3::TcpSocketFactory",
                                      InetSocketAddress (Ipv4Address::GetAny (), dataTransferPort));
@@ -259,7 +259,7 @@ main (int argc, char *argv[])
   BulkSendHelper2 source0 ("ns3::TcpSocketFactory", sinkAddress);
   // GtcpClientHelper source0(Address(terminalips.GetAddress(_idx)), dataTransferPort);
   // source0.SetRemote(sinkAddress)
-  source0.SetAttribute ("MaxBytes", UintegerValue (1024*1024));
+  source0.SetAttribute ("MaxBytes", UintegerValue (1024*1024*2));
   ApplicationContainer sourceapp = source0.Install (terminals.Get (0));
   sourceapp.Start (Seconds (1));
   sourceapp.Stop (Seconds(10));

@@ -229,8 +229,10 @@ void BulkSendApplication2::TestSendData (const Address &from, const Address &to)
 
   NS_LOG_FUNCTION (this);
 
-  if(!m_sentMetadata) 
+  if(!m_sentMetadata) {
     SendHeader(from, to);
+    m_transferStartedTime = Simulator::Now();
+  }
 
   while (m_totBytes < m_maxBytes)
     { // Time to send more
@@ -290,7 +292,7 @@ void BulkSendApplication2::TestSendData (const Address &from, const Address &to)
           // A Linux socket (non-blocking, such as in DCE) may return
           // a quantity less than the packet size.  Split the packet
           // into two, trace the sent packet, save the unsent packet
-          NS_LOG_DEBUG ("Packet size: " << packet->GetSize () << "; sent: " << actual << "; fragment saved: " << toSend - (unsigned) actual);
+          NS_LOG_INFO ("Packet size: " << packet->GetSize () << "; sent: " << actual << "; fragment saved: " << toSend - (unsigned) actual);
           Ptr<Packet> sent = packet->CreateFragment (0, actual);
           Ptr<Packet> unsent = packet->CreateFragment (actual, (toSend - (unsigned) actual));
           m_totBytes += actual;
@@ -306,6 +308,11 @@ void BulkSendApplication2::TestSendData (const Address &from, const Address &to)
 
 
     // now we schedule the response
+  if(m_totBytes >= m_maxBytes && !m_transferCompleted) {
+      m_transferCompleted = true;
+      Time elapsed = Simulator::Now() - m_transferStartedTime;
+      NS_LOG_DEBUG("[BulkSendApp] Took " << elapsed.GetMilliSeconds() << " to complete the transfer");
+  }
 }
 
 
@@ -373,7 +380,7 @@ void BulkSendApplication2::SendData (const Address &from, const Address &to)
           // A Linux socket (non-blocking, such as in DCE) may return
           // a quantity less than the packet size.  Split the packet
           // into two, trace the sent packet, save the unsent packet
-          NS_LOG_DEBUG ("Packet size: " << packet->GetSize () << "; sent: " << actual << "; fragment saved: " << toSend - (unsigned) actual);
+          NS_LOG_INFO ("Packet size: " << packet->GetSize () << "; sent: " << actual << "; fragment saved: " << toSend - (unsigned) actual);
           Ptr<Packet> sent = packet->CreateFragment (0, actual);
           Ptr<Packet> unsent = packet->CreateFragment (actual, (toSend - (unsigned) actual));
           m_totBytes += actual;
@@ -428,6 +435,11 @@ void BulkSendApplication2::DataSend (Ptr<Socket> socket, uint32_t)
 
 
 void BulkSendApplication2::ReceivedDataCallback(Ptr<Socket> socket) {
+  if(m_transferCompleted && !m_responseStarted) {
+    m_responseStarted = true;
+    m_responseStartedTime = Simulator::Now();
+  }
+
   Ptr<Packet> packet;
   Address from;
 
@@ -447,6 +459,10 @@ void BulkSendApplication2::ReceivedDataCallback(Ptr<Socket> socket) {
 
 
   void BulkSendApplication2::NormalCloseCallback (Ptr<Socket> socket) {
+    if(m_responseStarted) {
+      Time elapsed = Simulator::Now() - m_responseStartedTime;
+      NS_LOG_DEBUG("[BulkSendApp] Took " << elapsed.GetMilliSeconds() << "ms to receive the response");
+    }
       NS_LOG_INFO (this << " [BulkSendApp] Connection Closed Normally");
   }
 

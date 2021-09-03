@@ -137,6 +137,13 @@ private:
   Time m_waitTime; //!< Packet inter-send time
   bool m_sentMetadata = false;
 
+
+  bool m_transferCompleted = false;
+  Time m_transferStartedTime;
+
+  bool m_responseStarted = false;
+  Time m_responseStartedTime;
+
   /// Traced Callback: sent packets
   TracedCallback<Ptr<const Packet> > m_txTrace;
 

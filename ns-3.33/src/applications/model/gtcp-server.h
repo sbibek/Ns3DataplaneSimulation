@@ -88,6 +88,11 @@ private:
   bool m_metadataReceived = false;
   bool m_responseCycle = false;
 
+
+  Time m_receiveDataStarted;
+  bool m_responseStarted = false;
+  Time m_responseStartTime;
+
 };
 
 } // namespace ns3

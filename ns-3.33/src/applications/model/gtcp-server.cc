@@ -57,7 +57,7 @@ GtcpServer::GetTypeId (void)
                          MakeUintegerChecker<uint16_t> ())
           .AddAttribute ("TotalResponseBytes", "Bytes of data to send as response.",
                          UintegerValue (512), MakeUintegerAccessor (&GtcpServer::m_totalResponseBytes),
-                         MakeUintegerChecker<uint16_t> ())
+                         MakeUintegerChecker<uint64_t> ())
           .AddAttribute ("WaitPeriod", "Amount of time between send and results recv", TimeValue (Seconds (2.0)),
                        MakeTimeAccessor (&GtcpServer::m_waitTime), MakeTimeChecker ());
   return tid;
@@ -172,6 +172,7 @@ GtcpServer::ReceivedDataCallback (Ptr<Socket> socket)
                         << "Total so far = " << m_totalBulkTransferRcvdBytes <<" bytes");
 
       if(!m_metadataReceived) {
+        m_receiveDataStarted = Simulator::Now();
         // lets extract metadata
         DataTransferHeader hdr;
         packet->RemoveHeader(hdr);
@@ -180,12 +181,13 @@ GtcpServer::ReceivedDataCallback (Ptr<Socket> socket)
         NS_LOG_INFO(this << "Got metadata, total bytes expected = " <<  hdr.GetTotalBytesFollowingThis());
       }
 
-
     }
 
 
     if(!m_responseCycle && m_totalBulkTransferRcvdBytes >= m_totalBytesExpected) {
       m_responseCycle = true;
+      Time elapsed = Simulator::Now() - m_receiveDataStarted;
+      NS_LOG_DEBUG("[GTCP] Took " << elapsed.GetMilliSeconds() << "ms to receive all the data");
       // now we simulate sending response
       NS_LOG_DEBUG("[GTCP] Scheduling the response after " << m_waitTime.GetSeconds() << "s");
        Simulator::Schedule (m_waitTime, &GtcpServer::ResponseCycle, this, socket);
@@ -197,15 +199,20 @@ GtcpServer::ReceivedDataCallback (Ptr<Socket> socket)
 
 
 void GtcpServer::ResponseCycle(Ptr<Socket> s) {
+      if(m_responseStarted == false) {
+          m_responseStarted = true;
+          m_responseStartTime = Simulator::Now();
+      }
+
       uint64_t toSend = std::min((uint64_t)512, m_totalResponseBytes-m_totalResponseBytesSent);
-      NS_LOG_DEBUG("[GTCP] Response cycle Remaining=" << toSend << " bytes");
+      NS_LOG_INFO("[GTCP] Response cycle Remaining=" << toSend << " bytes");
 
       Ptr<Packet> load = Create<Packet>(toSend);
       int actual = s->Send(load);
 
       if(actual == -1) {
         // this is bad, lookslike no buffer, so schedule at later time
-        NS_LOG_DEBUG("Looks like buffer is full, so rescheduling after 5ms");
+        NS_LOG_INFO("Looks like buffer is full, so rescheduling after 5ms");
         Simulator::Schedule (MilliSeconds(5), &GtcpServer::ResponseCycle, this, s);
         return;
       }
@@ -215,6 +222,8 @@ void GtcpServer::ResponseCycle(Ptr<Socket> s) {
         // means need to reschedule it
         Simulator::Schedule (Seconds(0), &GtcpServer::ResponseCycle, this, s);
       } else {
+        Time elapsed = Simulator::Now() - m_responseStartTime;
+        NS_LOG_DEBUG("[GTPC] Sending response took " << elapsed.GetMilliSeconds() << "ms" );
         // means the response is complete
         s->Close();
       }
