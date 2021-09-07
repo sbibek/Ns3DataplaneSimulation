@@ -40,7 +40,7 @@ main (int argc, char *argv[])
 
   // probing configurations
   uint16_t PROBE_PORT = 9999;
-  // uint16_t PROBE_SENDER_MAX_PACKETS = 1; // 0 = unlimited
+  uint16_t PROBE_SENDER_MAX_PACKETS = 0; // 0 = unlimited
   float PROBE_SENDER_INTERVAL_SEC = 0.1; // 100ms
   // --------------------------------------
 
@@ -210,22 +210,28 @@ main (int argc, char *argv[])
   // sourceapp.Stop (Seconds (10));
 
 
-//  #define SCHEDULER
+ #define SCHEDULER
  #ifdef SCHEDULER 
+  int _schid =  1;
+  // terminalips.GetN()-1;
   // we will last one as the scheduler node
   PSchedulerHelper schedulerhelper(PROBE_PORT);
-  ns3::Address schedulerIpAddress = ns3::Address (terminalips.GetAddress (terminalips.GetN()-1));
+  ns3::Address schedulerIpAddress = ns3::Address (terminalips.GetAddress (_schid));
 
-  ApplicationContainer schedulerApp = schedulerhelper.Install(terminals.Get(terminals.GetN()-1));
+  ApplicationContainer schedulerApp = schedulerhelper.Install(terminals.Get(_schid));
   schedulerApp.Start(Seconds(0.0));
-  schedulerApp.Stop(Seconds(10.0));
+  schedulerApp.Stop(Seconds(50.0));
 
   
   ProbeAppHelper probeapphelper(schedulerIpAddress, PROBE_PORT, PROBE_SENDER_MAX_PACKETS,
                             PROBE_SENDER_INTERVAL_SEC);
-  ApplicationContainer app = probeapphelper.Install(probingNodes.Get(0));
+  NodeContainer probeNodes;
+  probeNodes.Add(probingNodes.Get(0));
+  // probeNodes.Add(probingNodes.Get(10));
+  // probeNodes.Add(probingNodes.Get(30));
+  ApplicationContainer app = probeapphelper.Install(probeNodes);
   app.Start(Seconds(1));
-  app.Stop(Seconds(10));
+  app.Stop(Seconds(50));
 #endif
 
 #ifdef PATH_TRACE
@@ -241,7 +247,7 @@ main (int argc, char *argv[])
 #ifdef TEST_DATA_TRANSFER
   // data transfer application
   int dataTransferPort = 12345;
-  int _idx = 1;
+  int _idx = terminalips.GetN()-1;
   Address sinkAddress (InetSocketAddress (terminalips.GetAddress (_idx), dataTransferPort));
 
   GtcpServerHelper gtcpserverHelper(dataTransferPort);
@@ -261,8 +267,8 @@ main (int argc, char *argv[])
   // source0.SetRemote(sinkAddress)
   source0.SetAttribute ("MaxBytes", UintegerValue (1024*1024*2));
   ApplicationContainer sourceapp = source0.Install (terminals.Get (0));
-  sourceapp.Start (Seconds (1));
-  sourceapp.Stop (Seconds(10));
+  sourceapp.Start (Seconds (20));
+  sourceapp.Stop (Seconds(30));
 #endif
 
 #if __ASCII_TRACE == 1
@@ -274,7 +280,7 @@ main (int argc, char *argv[])
   generalCsmaHelper.EnablePcapAll ("tree", false);
 #endif
 
-  Simulator::Stop (Seconds (10));
+  Simulator::Stop (Seconds (50));
   Simulator::Run ();
   Simulator::Destroy ();
   NS_LOG_INFO ("Done.");

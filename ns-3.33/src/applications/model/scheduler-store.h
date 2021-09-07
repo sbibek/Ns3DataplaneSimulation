@@ -22,6 +22,8 @@ class SchedulerStore
 {
 public:
   void onSwitchUpdate (ProbeHeader2 header, std::vector<ProbePayload2> payload);
+  std::unordered_map<int, int> tracePath(uint16_t a, uint16_t b);
+  void log(uint16_t swid);
   void log(void);
 
 private:

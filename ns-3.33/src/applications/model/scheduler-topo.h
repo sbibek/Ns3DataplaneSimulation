@@ -22,7 +22,7 @@ class SchedulerTopo
   public:
   SchedulerTopo();
 
-  private:
+  int minNodeId = 0, maxNodeId = 0;
   std::vector<std::vector<Path>> topoPath;   
   std::unordered_map<int, std::string> ips;
 };

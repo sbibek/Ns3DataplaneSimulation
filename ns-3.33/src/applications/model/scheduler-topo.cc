@@ -9,7 +9,8 @@
 	}
 
 	SchedulerTopo::SchedulerTopo() {
-	
+		this->minNodeId = 0;
+		this->maxNodeId = 39;
 		ips[0]="10.1.1.32";
 	ips[1]="10.1.1.33";
 	ips[2]="10.1.1.34";

@@ -175,14 +175,14 @@ PScheduler::HandleRead_Probe (Ptr<Socket> socket)
       socket->GetSockName (localAddress);
       m_rxTrace (packet);
       m_rxTraceWithAddresses (packet, from, localAddress);
-      std:: cout << "probe packet \n";
+      // std:: cout << "probe packet \n";
       #if 1 
       if (packet->GetSize () > 0)
         {
           // NS_LOG_INFO (InetSocketAddress::ConvertFrom (from).GetIpv4 ());
           ProbeHeader2 header;
           packet->RemoveHeader (header);
-          std::cout << "From swid=" << header.GetSwid () << " count=" << header.GetCount() << std::endl;
+          // std::cout << "From swid=" << header.GetSwid () << " count=" << header.GetCount() << std::endl;
           std::vector<ProbePayload2> payload;
           for (uint32_t i = 0; i < header.GetCount (); i++)
             {
@@ -205,10 +205,12 @@ PScheduler::HandleProbeData (ProbeHeader2 &header, std::vector<ProbePayload2> &p
   // NS_LOG_INFO ("[Rx Probe] "
   //              << "payload.count=" << header.GetCount ());
   store.onSwitchUpdate(header, payload);
-  for (ProbePayload2 p : payload)
-    {
-      std::cout << "(p) " << p.GetPortId() << " = (q) " << p.GetMaxQueueDepth() << std::endl;
-    }
+  store.tracePath(0,39);
+  // store.log(header.GetSwid());
+  // for (ProbePayload2 p : payload)
+  //   {
+  //     // std::cout << "(p) " << p.GetPortId() << " = (q) " << p.GetMaxQueueDepth() << std::endl;
+  //   }
 }
 
 void

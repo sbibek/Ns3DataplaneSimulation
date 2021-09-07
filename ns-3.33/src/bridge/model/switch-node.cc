@@ -90,9 +90,9 @@ void
 SwitchNode::onProbeReceived (Packet *packet, uint32_t swid, uint8_t outPortId, QueueStats *stats,
                  uint64_t current_ts)
 {
-  #define SWID_TRACE
+  // #define SWID_TRACE
   #ifdef SWID_TRACE
-  std::cout  << swid << ":" << (int)outPortId << std::endl ;
+  std::cout  << "[Switch Node id=" << swid << "] Probe exiting from " << (int)outPortId << std::endl ;
   #endif
 
   ProbeHeader2 ph;
