@@ -134,9 +134,14 @@ private:
   Ptr<Packet>     m_unsentPacket; //!< Variable to cache unsent packet
   bool            m_enableSeqTsSizeHeader {false}; //!< Enable or disable the SeqTsSizeHeader
 
+
+  // query sockets for scheduler
+  Ptr<Socket> m_querysocket;
+  Address m_schedularAddress; //!< Remote peer address
+  uint16_t m_queryPort; //!< Remote peer port
+
   Time m_waitTime; //!< Packet inter-send time
   bool m_sentMetadata = false;
-
 
   bool m_transferCompleted = false;
   Time m_transferStartedTime;
@@ -170,6 +175,13 @@ private:
   void ReceivedDataCallback (Ptr<Socket> socket);
   void NormalCloseCallback (Ptr<Socket> socket);
   void ErrorCloseCallback (Ptr<Socket> socket);
+
+
+  void QueryResponseHandler(Ptr<Socket>);
+  void SendQuery(void);
+
+
+
 };
 
 } // namespace ns3

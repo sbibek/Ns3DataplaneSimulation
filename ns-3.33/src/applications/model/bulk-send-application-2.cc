@@ -29,9 +29,13 @@
 #include "ns3/uinteger.h"
 #include "ns3/trace-source-accessor.h"
 #include "ns3/tcp-socket-factory.h"
+#include "ns3/udp-socket-factory.h"
 #include "ns3/boolean.h"
 #include "bulk-send-application-2.h"
 #include "ns3/data-transfer-header.h"
+#include "query-header.h"
+#include "query-response.h"
+#include "query-value.h"
 
 namespace ns3 {
 
@@ -84,6 +88,12 @@ BulkSendApplication2::GetTypeId (void)
     .AddTraceSource ("TxWithSeqTsSize", "A new packet is created with SeqTsSizeHeader",
                      MakeTraceSourceAccessor (&BulkSendApplication2::m_txTraceWithSeqTsSize),
                      "ns3::PacketSink::SeqTsSizeCallback")
+    .AddAttribute ("schedularAddress", "The destination Address of the outbound packets",
+                         AddressValue (), MakeAddressAccessor (&BulkSendApplication2::m_schedularAddress),
+                         MakeAddressChecker ())
+          .AddAttribute ("queryPort", "The destination port of the outbound packets",
+                         UintegerValue (100), MakeUintegerAccessor (&BulkSendApplication2::m_queryPort),
+                         MakeUintegerChecker<uint16_t> ())
   ;
   return tid;
 }
@@ -183,6 +193,15 @@ void BulkSendApplication2::StartApplication (void) // Called at time specified b
       m_socket->SetSendCallback (
         MakeCallback (&BulkSendApplication2::DataSend, this));
       m_socket->SetRecvCallback (MakeCallback (&BulkSendApplication2::ReceivedDataCallback, this));
+
+
+      // query sockets
+      m_querysocket = Socket::CreateSocket (GetNode (), UdpSocketFactory::GetTypeId());
+      m_querysocket->Connect (
+          InetSocketAddress (Ipv4Address::ConvertFrom (m_schedularAddress), m_queryPort));
+      m_querysocket->SetRecvCallback (MakeCallback(&BulkSendApplication2::QueryResponseHandler, this));
+
+
     }
   if (m_connected)
     {
@@ -429,7 +448,8 @@ void BulkSendApplication2::DataSend (Ptr<Socket> socket, uint32_t)
       socket->GetSockName (from);
       socket->GetPeerName (to);
       // SendData (from, to);
-      TestSendData(from, to);
+      SendQuery();
+      // TestSendData(from, to);
     }
 }
 
@@ -469,6 +489,43 @@ void BulkSendApplication2::ReceivedDataCallback(Ptr<Socket> socket) {
   void BulkSendApplication2::ErrorCloseCallback (Ptr<Socket> socket) {
       NS_LOG_INFO (this << " [BulkSendApp] Connection Closed !Normally");
   }
+
+
+void BulkSendApplication2::SendQuery(void) {
+  std::cout << "sending query" << std::endl;
+  QueryHeader header;
+  header.SetSwid(99);
+
+  Ptr<Packet> packet = Create<Packet>(header.GetSerializedSize());
+  packet->AddHeader(header);
+  m_querysocket->Send(packet);
+
+  NS_LOG_INFO("[Tx Query] swid=" << header.GetSwid());
+}
+
+void BulkSendApplication2::QueryResponseHandler(Ptr<Socket> socket) {
+  std::cout << Simulator::Now() <<  " <<R\n";
+  Ptr<Packet> packet;
+  Address from;
+  Address localAddress;
+  while ((packet = socket->RecvFrom (from)))
+    {
+      socket->GetSockName (localAddress);
+      if (packet->GetSize () > 0) {
+          QueryResponse response;
+          packet->RemoveHeader(response);
+
+          NS_LOG_INFO("[Rx Query Respone (sender)] count=" << response.GetCount());
+          std:: cout << Simulator::Now() <<  " Response received " << response.GetCount() << std::flush;
+          QueryValue value;
+          for(int i=0;i<response.GetCount();i++) {
+            packet->RemoveHeader(value);
+            NS_LOG_INFO("   swid=" << value.GetSwid() << " value=" << value.GetValue());
+          }
+      }
+    }
+
+}
 
 
 } // Namespace ns3

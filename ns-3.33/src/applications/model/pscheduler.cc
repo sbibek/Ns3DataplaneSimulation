@@ -138,7 +138,7 @@ PScheduler::StartApplication (void)
 
       // now we open up the query socket
       m_querysocket = Socket::CreateSocket (GetNode (), tid);
-      InetSocketAddress querylocal = InetSocketAddress (Ipv4Address::GetAny (), m_port + 1);
+      InetSocketAddress querylocal = InetSocketAddress (Ipv4Address::GetAny (), 8080);
       if (m_querysocket->Bind (querylocal) == -1)
         {
           NS_FATAL_ERROR ("Failed to bind query UDP socket");
@@ -205,8 +205,8 @@ PScheduler::HandleProbeData (ProbeHeader2 &header, std::vector<ProbePayload2> &p
   // NS_LOG_INFO ("[Rx Probe] "
   //              << "payload.count=" << header.GetCount ());
   store.onSwitchUpdate(header, payload);
-  store.tracePath(0,39);
-  // store.log(header.GetSwid());
+  // store.tracePath(0,39);
+  //  store.log(header.GetSwid());
   // for (ProbePayload2 p : payload)
   //   {
   //     // std::cout << "(p) " << p.GetPortId() << " = (q) " << p.GetMaxQueueDepth() << std::endl;
@@ -216,6 +216,7 @@ PScheduler::HandleProbeData (ProbeHeader2 &header, std::vector<ProbePayload2> &p
 void
 PScheduler::HandleRead_Query (Ptr<Socket> socket)
 {
+  std::cout << "Query << " << std::endl;
   NS_LOG_FUNCTION (this << socket);
   Ptr<Packet> packet;
   Address from;
@@ -239,6 +240,7 @@ void
 PScheduler::HandleQuery (QueryHeader &header, Address &from, Ptr<Socket> socket)
 {
   NS_LOG_INFO("[Rx Query] swid=" << header.GetSwid());
+  std:: cout << "Q " << header.GetSwid() << std::endl;
   // now we send a dummy response
   QueryResponse response;
   int random = rand() % 8 + 1;
@@ -257,7 +259,7 @@ PScheduler::HandleQuery (QueryHeader &header, Address &from, Ptr<Socket> socket)
 
   packet->AddHeader(response);
 
-
+  std::cout << Simulator::Now() << " " << "send response packet" << std::endl;
   if(socket->SendTo(packet, 0, from) >= 0) {
     // NS_LOG_INFO("[Tx Query Response (listener)] count=" << response.GetCount());
   }

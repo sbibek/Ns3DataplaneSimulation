@@ -225,11 +225,14 @@ main (int argc, char *argv[])
   
   ProbeAppHelper probeapphelper(schedulerIpAddress, PROBE_PORT, PROBE_SENDER_MAX_PACKETS,
                             PROBE_SENDER_INTERVAL_SEC);
-  NodeContainer probeNodes;
-  probeNodes.Add(probingNodes.Get(0));
+  // NodeContainer probeNodes;
+  // probeNodes.Add(probingNodes.Get(0));
   // probeNodes.Add(probingNodes.Get(10));
   // probeNodes.Add(probingNodes.Get(30));
-  ApplicationContainer app = probeapphelper.Install(probeNodes);
+  ApplicationContainer app = probeapphelper.Install(
+    probingNodes
+    // probeNodes
+    );
   app.Start(Seconds(1));
   app.Stop(Seconds(50));
 #endif
@@ -266,6 +269,8 @@ main (int argc, char *argv[])
   // GtcpClientHelper source0(Address(terminalips.GetAddress(_idx)), dataTransferPort);
   // source0.SetRemote(sinkAddress)
   source0.SetAttribute ("MaxBytes", UintegerValue (1024*1024*2));
+  source0.SetAttribute("schedularAddress", AddressValue(schedulerIpAddress));
+  source0.SetAttribute("queryPort", UintegerValue(8080));
   ApplicationContainer sourceapp = source0.Install (terminals.Get (0));
   sourceapp.Start (Seconds (20));
   sourceapp.Stop (Seconds(30));

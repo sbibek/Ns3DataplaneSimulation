@@ -184,7 +184,6 @@ ProbeApp2::SendProbe (void)
   //  SendQuery(); 
 }
 
-
 void ProbeApp2::SendQuery(void) {
   QueryHeader header;
   header.SetSwid(m_sent);
