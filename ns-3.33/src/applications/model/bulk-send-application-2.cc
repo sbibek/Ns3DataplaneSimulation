@@ -93,7 +93,7 @@ BulkSendApplication2::GetTypeId (void)
                          AddressValue (), MakeAddressAccessor (&BulkSendApplication2::m_schedularAddress),
                          MakeAddressChecker ())
     .AddAttribute ("queryPort", "The destination port of the outbound packets",
-                         UintegerValue (100), MakeUintegerAccessor (&BulkSendApplication2::m_queryPort),
+                         UintegerValue (8080), MakeUintegerAccessor (&BulkSendApplication2::m_queryPort),
                          MakeUintegerChecker<uint16_t> ())
 
   ;

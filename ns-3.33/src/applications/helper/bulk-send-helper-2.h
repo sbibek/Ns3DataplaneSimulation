@@ -52,6 +52,8 @@ public:
    * \param address the address of the remote node to send traffic
    *        to.
    */
+
+  BulkSendHelper2 ();
   BulkSendHelper2 (std::string protocol, Address address);
 
   /**

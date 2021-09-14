@@ -24,6 +24,15 @@ NS_LOG_COMPONENT_DEFINE ("THREETREE");
 
 CsmaHelper createCsmaHelper (std::string dataRate, std::string queueSize, int delayMicroSec);
 
+
+/**
+ *  Important** 
+ *  1. The data transfer port should be always be 12345 
+ *  2. Query port is always 8080
+ * 
+ * 
+ * */
+
 int
 main (int argc, char *argv[])
 {
@@ -184,6 +193,7 @@ main (int argc, char *argv[])
 
 
   // updating the terminal nodes with ip information as required for our simulation
+  // This is important because the nodes information is required for the data transfer operations
   for(int i=0;i<(int)terminals.GetN();i++) {
     terminals.Get(i)->SetTerminalIps(&terminalips);
   }
@@ -278,12 +288,11 @@ main (int argc, char *argv[])
   sinkapp.Start (Seconds (1));
   sinkapp.Stop (Seconds(30));
   
-  BulkSendHelper2 source0 ("ns3::TcpSocketFactory", sinkAddress);
+  BulkSendHelper2 source0;
   // GtcpClientHelper source0(Address(terminalips.GetAddress(_idx)), dataTransferPort);
   // source0.SetRemote(sinkAddress)
   source0.SetAttribute ("MaxBytes", UintegerValue (1024*1024*2));
   source0.SetAttribute("schedularAddress", AddressValue(schedulerIpAddress));
-  source0.SetAttribute("queryPort", UintegerValue(8080));
   ApplicationContainer sourceapp = source0.Install (terminals.Get (0));
   sourceapp.Start (Seconds (10));
   sourceapp.Stop (Seconds(30));

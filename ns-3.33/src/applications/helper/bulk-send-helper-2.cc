@@ -28,6 +28,12 @@
 
 namespace ns3 {
 
+BulkSendHelper2::BulkSendHelper2 ()
+{
+  m_factory.SetTypeId ("ns3::BulkSendApplication2");
+  m_factory.Set ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+}
+
 BulkSendHelper2::BulkSendHelper2 (std::string protocol, Address address)
 {
   m_factory.SetTypeId ("ns3::BulkSendApplication2");
