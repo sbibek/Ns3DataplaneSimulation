@@ -10,22 +10,22 @@ NS_LOG_COMPONENT_DEFINE ("QueryValue");
 
 NS_OBJECT_ENSURE_REGISTERED (QueryValue);
 
-QueryValue::QueryValue () : m_swid (0), m_value (0)
+QueryValue::QueryValue () : m_nodeId (0), m_value (0)
 {
   NS_LOG_FUNCTION (this);
 }
 
 void
-QueryValue::SetSwid (uint16_t swid)
+QueryValue::SetNodeId (uint16_t swid)
 {
   NS_LOG_FUNCTION (this << swid);
-  m_swid = swid;
+  m_nodeId = swid;
 }
 uint16_t
-QueryValue::GetSwid (void) const
+QueryValue::GetNodeId (void) const
 {
   NS_LOG_FUNCTION (this);
-  return m_swid;
+  return m_nodeId;
 }
 
 void
@@ -58,7 +58,7 @@ void
 QueryValue::Print (std::ostream &os) const
 {
   NS_LOG_FUNCTION (this << &os);
-  os << "Swid: " << m_swid << " Value: " << m_value;
+  os << "Swid: " << m_nodeId << " Value: " << m_value;
 }
 
 uint32_t
@@ -73,7 +73,7 @@ QueryValue::Serialize (Buffer::Iterator start) const
 {
   NS_LOG_FUNCTION (this << &start);
   Buffer::Iterator i = start;
-  i.WriteHtonU16 (m_swid);
+  i.WriteHtonU16 (m_nodeId);
   i.WriteHtonU32(m_value);
 }
 uint32_t
@@ -81,7 +81,7 @@ QueryValue::Deserialize (Buffer::Iterator start)
 {
   NS_LOG_FUNCTION (this << &start);
   Buffer::Iterator i = start;
-  m_swid = i.ReadNtohU16 ();
+  m_nodeId = i.ReadNtohU16 ();
   m_value = i.ReadNtohU32();
   return GetSerializedSize ();
 }

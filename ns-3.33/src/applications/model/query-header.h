@@ -39,11 +39,11 @@ public:
   virtual void Serialize (Buffer::Iterator start) const;
   virtual uint32_t Deserialize (Buffer::Iterator start);
 
-  void SetSwid(uint16_t);
-  uint16_t GetSwid(void) const;
+  void SetNodeId(uint16_t);
+  uint16_t GetNodeId(void) const;
 
 private:
-  uint16_t m_swid;
+  uint16_t m_nodeId;
 };
 
 } // namespace ns3

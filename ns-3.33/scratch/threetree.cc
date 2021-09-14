@@ -30,7 +30,7 @@ main (int argc, char *argv[])
   LogComponentEnable ("GtcpServer", LOG_LEVEL_DEBUG);
   LogComponentEnable ("BulkSendApplication2", LOG_LEVEL_DEBUG);
   LogComponentEnable ("GtcpClient", LOG_LEVEL_INFO);
-
+  LogComponentEnable ("PScheduler", LOG_LEVEL_DEBUG);
 
   // topology configurations
   int AGGREGATION_SW_N = 10;
@@ -139,6 +139,10 @@ main (int argc, char *argv[])
   // now we will create terminal edge nodes
   NodeContainer terminals;
   terminals.Create (AGGREGATION_SW_N * EDGE_PER_AGG_SW_N * NODE_PER_EDGE);
+  // set terminal ids
+  for(int i=0;i<(int)terminals.GetN();i++) {
+    terminals.Get(i)->SetIdx(i);
+  }
 
   // link all the terminals to the edges
   NetDeviceContainer terminalDevices;
@@ -230,6 +234,7 @@ main (int argc, char *argv[])
   // probeNodes.Add(probingNodes.Get(10));
   // probeNodes.Add(probingNodes.Get(30));
   ApplicationContainer app = probeapphelper.Install(
+    // probingNodes.Get(0)
     probingNodes
     // probeNodes
     );

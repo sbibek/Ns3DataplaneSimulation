@@ -234,7 +234,7 @@ ProbeListener::HandleRead_Query (Ptr<Socket> socket)
 void
 ProbeListener::HandleQuery (QueryHeader &header, Address &from, Ptr<Socket> socket)
 {
-  NS_LOG_INFO("[Rx Query] swid=" << header.GetSwid());
+  NS_LOG_INFO("[Rx Query] swid=" << header.GetNodeId());
   // now we send a dummy response
   QueryResponse response;
   int random = rand() % 8 + 1;
@@ -244,11 +244,11 @@ ProbeListener::HandleQuery (QueryHeader &header, Address &from, Ptr<Socket> sock
   NS_LOG_INFO("[Tx Query Response (listener)] count=" << response.GetCount());
   for(int i=0;i<random;i++){
     QueryValue value;
-    value.SetSwid(i+1);
+    value.SetNodeId(i+1);
     value.SetValue(rand()%20+10);
     packet->AddHeader(value);
 
-    NS_LOG_INFO("   swid=" << value.GetSwid() << " value="<<value.GetValue());
+    NS_LOG_INFO("   swid=" << value.GetNodeId() << " value="<<value.GetValue());
   }
 
   packet->AddHeader(response);

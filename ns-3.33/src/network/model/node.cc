@@ -370,6 +370,17 @@ Node::NotifyDeviceAdded (Ptr<NetDevice> device)
       (*i) (device);
     }  
 }
+
+
+
+
+  // bibek
+  void Node::SetIdx(uint32_t idx) {
+    m_idx = idx;
+  }
+  uint32_t Node::GetIdx(void) {
+    return m_idx;
+  }
  
 
 } // namespace ns3

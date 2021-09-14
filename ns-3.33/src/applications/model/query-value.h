@@ -15,8 +15,8 @@ class QueryValue : public Header
 public:
   QueryValue ();
 
-  void SetSwid(uint16_t);
-  uint16_t GetSwid(void) const;  
+  void SetNodeId(uint16_t);
+  uint16_t GetNodeId(void) const;  
 
   void SetValue(uint32_t);
   uint32_t GetValue(void) const;
@@ -30,7 +30,7 @@ public:
   virtual uint32_t Deserialize (Buffer::Iterator start);
 
 private:
-  uint16_t m_swid;
+  uint16_t m_nodeId;
   uint32_t m_value;
 
 };

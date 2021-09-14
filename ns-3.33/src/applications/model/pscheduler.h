@@ -91,6 +91,7 @@ private:
 
   void HandleProbeData(ProbeHeader2& header, std::vector<ProbePayload2>& payload, Address& from);
   void HandleQuery(QueryHeader& header, Address& from, Ptr<Socket> socket);
+  std::vector<std::tuple<int,int>> schedulingKernel(std::vector<std::tuple<int,int>> info);
 
   uint16_t m_port; //!< Port on which we listen for incoming packets.
   Ptr<Socket> m_socket; //!< IPv4 Socket

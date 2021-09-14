@@ -122,10 +122,10 @@ void onQueryPacketReceived(Packet *packet, uint32_t swid, uint8_t outPortId, Que
       QueryHeader qheader;
       packet->RemoveHeader(qheader);
 
-      if(qheader.GetSwid() == 0) {
+      if(qheader.GetNodeId() == 0) {
         std::cout << "Query set swid " << swid << std::endl;
         // means query doesnt have the swid yet, so lets put it in there
-        qheader.SetSwid(swid);
+        qheader.SetNodeId(swid);
       } 
 
       packet->AddHeader(qheader);
@@ -206,10 +206,13 @@ SwitchNode::process (Ptr<NetDevice> incomingPort, Ptr<NetDevice> outgoingPort, P
               // std:: cout << "PROBE packet @switch=" << swid<< std::endl;
               onProbeReceived (packet, swid, outPortId, st, current_ts);
             }
+            #ifdef QUERYHANDLER
             else if(udph.GetDestinationPort() == probePort+1) {
               // query packet
               onQueryPacketReceived(packet, swid, outPortId, st, current_ts);
-            } else if(udph.GetDestinationPort() == probePort+2) {
+            } 
+            #endif
+            else if(udph.GetDestinationPort() == probePort+2) {
               // this means we just want to dump the path taken by the packet
               std::cout << "PATH " << swid << " " << outPortId << std::endl;
             }

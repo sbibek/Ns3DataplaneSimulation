@@ -239,32 +239,61 @@ PScheduler::HandleRead_Query (Ptr<Socket> socket)
 void
 PScheduler::HandleQuery (QueryHeader &header, Address &from, Ptr<Socket> socket)
 {
-  NS_LOG_INFO("[Rx Query] swid=" << header.GetSwid());
-  std:: cout << "Q " << header.GetSwid() << std::endl;
-  // now we send a dummy response
+  NS_LOG_DEBUG("[Rx Query] swid=" << header.GetNodeId());
+
   QueryResponse response;
-  int random = rand() % 8 + 1;
-  response.SetCount(random);
   Ptr<Packet> packet = Create<Packet>(response.GetSerializedSize());
 
-  NS_LOG_INFO("[Tx Query Response (listener)] count=" << response.GetCount());
-  for(int i=0;i<random;i++){
-    QueryValue value;
-    value.SetSwid(i+1);
-    value.SetValue(rand()%20+10);
-    packet->AddHeader(value);
-
-    NS_LOG_INFO("   swid=" << value.GetSwid() << " value="<<value.GetValue());
+  #if 0 
+  std::unordered_map<int, int> results = store.tracePath(header.GetNodeId());
+  for(auto x: results) { 
+    QueryValue v;
+    v.SetNodeId(x.first);
+    v.SetValue(x.second);
+    packet->AddHeader(v);
   }
+  #else
+    std::vector<std::tuple<int,int>> results = schedulingKernel(store.tracePathWithTuple(header.GetNodeId()));
+    std::vector<std::tuple<int,int>>::iterator i = results.end();
+    while(i != results.begin()) {
+      --i;
+      QueryValue v;
+      std::tuple<int, int> t = *i;
+      v.SetNodeId(std::get<1>(t));
+      v.SetValue(std::get<0>(t));
+      packet->AddHeader(v);
+    }
+  #endif
+
+  response.SetCount(results.size());
+
+
+
+  // NS_LOG_INFO("[Tx Query Response (listener)] count=" << response.GetCount());
+  // for(int i=0;i<random;i++){
+  //   QueryValue value;
+  //   value.SetNodeId(i+1);
+  //   value.SetValue(rand()%20+10);
+  //   packet->AddHeader(value);
+
+  //   NS_LOG_INFO("   swid=" << value.GetNodeId() << " value="<<value.GetValue());
+  // }
 
   packet->AddHeader(response);
 
-  std::cout << Simulator::Now() << " " << "send response packet" << std::endl;
   if(socket->SendTo(packet, 0, from) >= 0) {
     // NS_LOG_INFO("[Tx Query Response (listener)] count=" << response.GetCount());
   }
 
 
+}
+
+
+std::vector<std::tuple<int,int>> 
+PScheduler::schedulingKernel(std::vector<std::tuple<int,int>> info) {
+  // write the kernel here/
+  // important is that the first element is actually the effectiuve queue and 2nd is the node id
+  return info;
 }
 
 } // Namespace ns3

@@ -210,6 +210,11 @@ public:
   static bool ChecksumEnabled (void);
 
 
+  // bibek
+  void SetIdx(uint32_t idx);
+  uint32_t GetIdx(void);
+
+
 protected:
   /**
    * The dispose method. Subclasses must override this method
@@ -288,6 +293,13 @@ private:
   std::vector<Ptr<Application> > m_applications; //!< Applications associated to this node
   ProtocolHandlerList m_handlers; //!< Protocol handlers in the node
   DeviceAdditionListenerList m_deviceAdditionListeners; //!< Device addition listeners in the node
+
+
+  // Added by bibek
+  // we want to give specific index value to all the nodes
+  // this is because m_id will change whenever there is any additional nodes created before targetted nodes
+  // hence its unpredictable
+  uint32_t m_idx;
 };
 
 } // namespace ns3

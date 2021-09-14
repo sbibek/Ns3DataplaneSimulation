@@ -186,13 +186,13 @@ ProbeSender::SendProbe (void)
 
 void ProbeSender::SendQuery(void) {
   QueryHeader header;
-  header.SetSwid(m_sent);
+  header.SetNodeId(m_sent);
 
   Ptr<Packet> packet = Create<Packet>(header.GetSerializedSize());
   packet->AddHeader(header);
   m_querysocket->Send(packet);
 
-  NS_LOG_INFO("[Tx Query] swid=" << header.GetSwid());
+  NS_LOG_INFO("[Tx Query] swid=" << header.GetNodeId());
 }
 
 void ProbeSender::QueryResponseHandler(Ptr<Socket> socket) {
@@ -210,7 +210,7 @@ void ProbeSender::QueryResponseHandler(Ptr<Socket> socket) {
           QueryValue value;
           for(int i=0;i<response.GetCount();i++) {
             packet->RemoveHeader(value);
-            NS_LOG_INFO("   swid=" << value.GetSwid() << " value=" << value.GetValue());
+            NS_LOG_INFO("   swid=" << value.GetNodeId() << " value=" << value.GetValue());
           }
       }
     }

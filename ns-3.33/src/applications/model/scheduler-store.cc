@@ -1,4 +1,10 @@
 #include "scheduler-store.h"
+#include <algorithm>
+
+bool sortfn(const std::tuple<int, int, int>& a, 
+               const std::tuple<int, int, int>& b) {
+	return (std::get<1>(a) < std::get<1>(b));
+}
 
 void
 SchedulerStore::onSwitchUpdate (ProbeHeader2 header, std::vector<ProbePayload2> payload) {
@@ -16,14 +22,14 @@ SchedulerStore::log(uint16_t swid) {
 }
 
 std::unordered_map<int, int>
-SchedulerStore::tracePath(uint16_t a, uint16_t b) {
+SchedulerStore::tracePath(uint16_t a) {
 	std::unordered_map<int, int> effectiveQs;
 	int q = 0;
 	for(int i=topo.minNodeId; i<=topo.maxNodeId; i++) {
 		if(i == a) continue;
 
 		q = 0;
-		for(auto path: topo.topoPath.at(a).at(b).path) {
+		for(auto path: topo.topoPath.at(a).at(i).path) {
 			 q += switches[path.swid][path.portid].maxQueueOccupancy;
 		}
 		effectiveQs[i] = q;
@@ -35,6 +41,31 @@ SchedulerStore::tracePath(uint16_t a, uint16_t b) {
 	//  }
 	 return effectiveQs;
 }
+
+
+std::vector<std::tuple<int,int>> SchedulerStore::tracePathWithTuple(uint16_t a)
+{
+	std::vector<std::tuple<int,int>> qs;
+	for(int i=topo.minNodeId; i<=topo.maxNodeId; i++) {
+		if(i == a) continue;
+
+		int q = 0;
+		for(auto path: topo.topoPath.at(a).at(i).path) {
+			 q += switches[path.swid][path.portid].maxQueueOccupancy;
+		}
+
+		qs.push_back(std::tuple<int,int>{q, i});
+	}
+
+	//  for(auto x: effectiveQs) {
+	// 	 if(x.second > 0)
+	// 	 std::cout << x.first << "=" << x.second << std::endl;
+	//  }
+	std::sort(qs.begin(), qs.end());
+ 	return qs;
+}
+
+
 
 
 void 

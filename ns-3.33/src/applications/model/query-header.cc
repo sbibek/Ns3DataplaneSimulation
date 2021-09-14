@@ -30,20 +30,20 @@ NS_LOG_COMPONENT_DEFINE ("QueryHeader");
 
 NS_OBJECT_ENSURE_REGISTERED (QueryHeader);
 
-QueryHeader::QueryHeader () : m_swid (0)
+QueryHeader::QueryHeader () : m_nodeId (0)
 {
   NS_LOG_FUNCTION (this);
 }
 
 void
-QueryHeader::SetSwid (uint16_t swid)
+QueryHeader::SetNodeId (uint16_t swid)
 {
-  m_swid = swid;
+  m_nodeId = swid;
 }
 uint16_t
-QueryHeader::GetSwid (void) const
+QueryHeader::GetNodeId (void) const
 {
-  return m_swid;
+  return m_nodeId;
 }
 
 TypeId
@@ -64,7 +64,7 @@ void
 QueryHeader::Print (std::ostream &os) const
 {
   NS_LOG_FUNCTION (this << &os);
-  os << "Swid " << m_swid;
+  os << "Swid " << m_nodeId;
 }
 uint32_t
 QueryHeader::GetSerializedSize (void) const
@@ -78,14 +78,14 @@ QueryHeader::Serialize (Buffer::Iterator start) const
 {
   NS_LOG_FUNCTION (this << &start);
   Buffer::Iterator i = start;
-  i.WriteHtonU16 (m_swid);
+  i.WriteHtonU16 (m_nodeId);
 }
 uint32_t
 QueryHeader::Deserialize (Buffer::Iterator start)
 {
   NS_LOG_FUNCTION (this << &start);
   Buffer::Iterator i = start;
-  m_swid = i.ReadNtohU16 ();
+  m_nodeId = i.ReadNtohU16 ();
   return GetSerializedSize ();
 }
 

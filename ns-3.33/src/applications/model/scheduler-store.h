@@ -8,6 +8,9 @@
 #include <stdlib.h>
 
 using namespace ns3;
+bool sortfn(const std::tuple<int, int, int>& a, 
+               const std::tuple<int, int, int>& b);
+
 typedef struct
 {
   int maxQueueOccupancy;
@@ -22,7 +25,8 @@ class SchedulerStore
 {
 public:
   void onSwitchUpdate (ProbeHeader2 header, std::vector<ProbePayload2> payload);
-  std::unordered_map<int, int> tracePath(uint16_t a, uint16_t b);
+  std::unordered_map<int, int> tracePath(uint16_t a);
+  std::vector<std::tuple<int,int>> tracePathWithTuple(uint16_t a);
   void log(uint16_t swid);
   void log(void);
 

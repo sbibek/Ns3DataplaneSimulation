@@ -492,19 +492,18 @@ void BulkSendApplication2::ReceivedDataCallback(Ptr<Socket> socket) {
 
 
 void BulkSendApplication2::SendQuery(void) {
-  std::cout << "sending query" << std::endl;
+  std::cout << "sending query " << this->m_node->GetIdx() << std::endl;
   QueryHeader header;
-  header.SetSwid(99);
+  header.SetNodeId(m_node->GetIdx());
 
   Ptr<Packet> packet = Create<Packet>(header.GetSerializedSize());
   packet->AddHeader(header);
   m_querysocket->Send(packet);
 
-  NS_LOG_INFO("[Tx Query] swid=" << header.GetSwid());
+  NS_LOG_INFO("[Tx Query] swid=" << header.GetNodeId());
 }
 
 void BulkSendApplication2::QueryResponseHandler(Ptr<Socket> socket) {
-  std::cout << Simulator::Now() <<  " <<R\n";
   Ptr<Packet> packet;
   Address from;
   Address localAddress;
@@ -515,12 +514,12 @@ void BulkSendApplication2::QueryResponseHandler(Ptr<Socket> socket) {
           QueryResponse response;
           packet->RemoveHeader(response);
 
-          NS_LOG_INFO("[Rx Query Respone (sender)] count=" << response.GetCount());
+          NS_LOG_DEBUG("[Rx Query Respone (sender)] count=" << response.GetCount());
           std:: cout << Simulator::Now() <<  " Response received " << response.GetCount() << std::flush;
           QueryValue value;
           for(int i=0;i<response.GetCount();i++) {
             packet->RemoveHeader(value);
-            NS_LOG_INFO("   swid=" << value.GetSwid() << " value=" << value.GetValue());
+            NS_LOG_DEBUG("   nodeid=" << value.GetNodeId() << " value=" << value.GetValue());
           }
       }
     }
