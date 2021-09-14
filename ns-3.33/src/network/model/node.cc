@@ -381,6 +381,14 @@ Node::NotifyDeviceAdded (Ptr<NetDevice> device)
   uint32_t Node::GetIdx(void) {
     return m_idx;
   }
+
+  void Node::SetTerminalIps(void* ips){
+    m_terminalIps = ips;
+  }
+
+  void* Node::getTerminalIps(void) {
+    return m_terminalIps;
+  }
  
 
 } // namespace ns3

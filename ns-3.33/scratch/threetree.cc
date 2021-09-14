@@ -182,6 +182,14 @@ main (int argc, char *argv[])
   Ipv4InterfaceContainer probeips = ipv4.Assign(probingDevices);
   Ipv4InterfaceContainer terminalips = ipv4.Assign (terminalDevices);
 
+
+  // updating the terminal nodes with ip information as required for our simulation
+  for(int i=0;i<(int)terminals.GetN();i++) {
+    terminals.Get(i)->SetTerminalIps(&terminalips);
+  }
+
+// now we will share terminalDeviecs to all the terminal nodes
+
 #if __DUMP_IPS == 1
   std::cout << "[ Probing Nodes IPs ] \n";
   for (int i = 0; i < (int) probeips.GetN (); i++)
@@ -265,10 +273,10 @@ main (int argc, char *argv[])
   PacketSinkHelper packetSinkHelper ("ns3::TcpSocketFactory",
                                      InetSocketAddress (Ipv4Address::GetAny (), dataTransferPort));
 
-  ApplicationContainer sinkapp =  gtcpserverHelper.Install(terminals.Get (_idx));
+  ApplicationContainer sinkapp =  gtcpserverHelper.Install(terminals);
                               //packetSinkHelper.Install (terminals.Get (_idx));
   sinkapp.Start (Seconds (1));
-  sinkapp.Stop (Seconds(10));
+  sinkapp.Stop (Seconds(30));
   
   BulkSendHelper2 source0 ("ns3::TcpSocketFactory", sinkAddress);
   // GtcpClientHelper source0(Address(terminalips.GetAddress(_idx)), dataTransferPort);
@@ -277,7 +285,7 @@ main (int argc, char *argv[])
   source0.SetAttribute("schedularAddress", AddressValue(schedulerIpAddress));
   source0.SetAttribute("queryPort", UintegerValue(8080));
   ApplicationContainer sourceapp = source0.Install (terminals.Get (0));
-  sourceapp.Start (Seconds (20));
+  sourceapp.Start (Seconds (10));
   sourceapp.Stop (Seconds(30));
 #endif
 
@@ -289,7 +297,6 @@ main (int argc, char *argv[])
 #if __PCAP_TRACE == 1
   generalCsmaHelper.EnablePcapAll ("tree", false);
 #endif
-
   Simulator::Stop (Seconds (50));
   Simulator::Run ();
   Simulator::Destroy ();

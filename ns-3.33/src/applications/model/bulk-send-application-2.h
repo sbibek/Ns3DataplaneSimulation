@@ -118,7 +118,6 @@ private:
    * \param from From address
    * \param to To address
    */
-  void SendData (const Address &from, const Address &to);
   void SendHeader (const Address &from, const Address &to);
   void TestSendData (const Address &from, const Address &to);
 
@@ -179,9 +178,9 @@ private:
 
   void QueryResponseHandler(Ptr<Socket>);
   void SendQuery(void);
-
-
-
+  void QuerySequence(void);
+  void DataTransferSequence(int nodeId);
+  void InitTransfer(void);
 };
 
 } // namespace ns3

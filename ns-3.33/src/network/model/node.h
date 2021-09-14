@@ -27,6 +27,8 @@
 #include "ns3/callback.h"
 #include "ns3/ptr.h"
 #include "ns3/net-device.h"
+#include "ns3/net-device-container.h"
+#include "ns3/ipv4-interface-container.h"
 
 namespace ns3 {
 
@@ -213,6 +215,8 @@ public:
   // bibek
   void SetIdx(uint32_t idx);
   uint32_t GetIdx(void);
+  void SetTerminalIps(void* ips);
+  void* getTerminalIps(void);
 
 
 protected:
@@ -300,6 +304,7 @@ private:
   // this is because m_id will change whenever there is any additional nodes created before targetted nodes
   // hence its unpredictable
   uint32_t m_idx;
+  void* m_terminalIps;
 };
 
 } // namespace ns3

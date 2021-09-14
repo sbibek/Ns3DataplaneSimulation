@@ -293,6 +293,7 @@ std::vector<std::tuple<int,int>>
 PScheduler::schedulingKernel(std::vector<std::tuple<int,int>> info) {
   // write the kernel here/
   // important is that the first element is actually the effectiuve queue and 2nd is the node id
+  // must return it in the same direction, sorted by first key
   return info;
 }
 
