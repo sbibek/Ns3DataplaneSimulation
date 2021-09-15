@@ -126,6 +126,62 @@ void Application::StopApplication ()
   NS_LOG_FUNCTION (this);
 }
 
+  MyLogger& Application::logger(std::string context) {
+    MyLogger* logger = new MyLogger(*this, context);
+    return *logger;
+  }
+
+
+MyLogger::MyLogger(Application& app, std::string context) {
+  this->app = app; this->context = context;
+}
+
+MyLogger& MyLogger::add(std::string key, std::string val) {
+  msg.push_back(std::make_tuple(key, val));
+  return *this;
+}
+
+MyLogger& MyLogger::add(std::string key, int val) {
+  msg.push_back(std::make_tuple(key, std::to_string(val)));
+  return *this;
+}
+
+MyLogger& MyLogger::add(std::string key, uint64_t val) {
+  msg.push_back(std::make_tuple(key, std::to_string(val)));
+  return *this;
+}
+
+MyLogger& MyLogger::add(std::string key, uint32_t val) {
+  msg.push_back(std::make_tuple(key, std::to_string(val)));
+  return *this;
+}
+
+MyLogger& MyLogger::add(std::string key, double val) {
+  msg.push_back(std::make_tuple(key, std::to_string(val)));
+  return *this;
+}
+
+MyLogger& MyLogger::add(std::string key, long val) {
+  msg.push_back(std::make_tuple(key, std::to_string(val)));
+  return *this;
+}
+
+MyLogger& MyLogger::add(std::string key, float val) {
+  msg.push_back(std::make_tuple(key, std::to_string(val)));
+  return *this;
+}
+
+void MyLogger::log() {
+  std::stringstream ss;
+  ss << "{\"context\":\"" << context << "\", \"node\":\"" << app.GetNode()->GetIdx()<<"\"";
+  for(std::tuple<std::string, std::string> t: msg) {
+      ss << ", \"" << std::get<0>(t) << "\":\""<<std::get<1>(t) << "\"";
+  }
+  ss << "}";
+
+  NS_LOG_UNCOND(ss.str());
+}
+
 } // namespace ns3
 
 

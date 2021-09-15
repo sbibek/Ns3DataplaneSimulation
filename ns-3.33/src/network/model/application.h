@@ -57,6 +57,7 @@ class Node;
 * \brief The base class for all ns3 applications
 *
 */
+class MyLogger;
 class Application : public Object
 {
 public:
@@ -150,6 +151,28 @@ protected:
   Time m_stopTime;          //!< The simulation time that the application will end
   EventId m_startEvent;     //!< The event that will fire at m_startTime to start the application
   EventId m_stopEvent;      //!< The event that will fire at m_stopTime to end the application
+
+
+  // bibek
+  MyLogger& logger(std::string context);
+
+};
+
+class MyLogger {
+  Application app;
+  std::string context;
+  std::vector<std::tuple<std::string, std::string>> msg;
+
+  public:
+  MyLogger(Application& app, std::string context);
+  MyLogger& add(std::string key, std::string value);
+  MyLogger& add(std::string key, int value);
+  MyLogger& add(std::string key, uint64_t value);
+  MyLogger& add(std::string key, uint32_t value);
+  MyLogger& add(std::string key, long value);
+  MyLogger& add(std::string key, double value);
+  MyLogger& add(std::string key, float value);
+  void log();
 };
 
 } // namespace ns3

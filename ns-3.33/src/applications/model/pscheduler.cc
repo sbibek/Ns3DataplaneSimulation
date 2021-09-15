@@ -216,7 +216,7 @@ PScheduler::HandleProbeData (ProbeHeader2 &header, std::vector<ProbePayload2> &p
 void
 PScheduler::HandleRead_Query (Ptr<Socket> socket)
 {
-  std::cout << "Query << " << std::endl;
+  // std::cout << "Query << " << std::endl;
   NS_LOG_FUNCTION (this << socket);
   Ptr<Packet> packet;
   Address from;
@@ -239,7 +239,8 @@ PScheduler::HandleRead_Query (Ptr<Socket> socket)
 void
 PScheduler::HandleQuery (QueryHeader &header, Address &from, Ptr<Socket> socket)
 {
-  NS_LOG_DEBUG("[Rx Query] swid=" << header.GetNodeId());
+  // NS_LOG_DEBUG("[Rx Query] swid=" << header.GetNodeId());
+  logger("debug").add("app", "scheduler").add("received query from", header.GetNodeId()).log();
 
   QueryResponse response;
   Ptr<Packet> packet = Create<Packet>(response.GetSerializedSize());

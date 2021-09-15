@@ -187,9 +187,11 @@ GtcpServer::ReceivedDataCallback (Ptr<Socket> socket)
     if(!m_responseCycle && m_totalBulkTransferRcvdBytes >= m_totalBytesExpected) {
       m_responseCycle = true;
       Time elapsed = Simulator::Now() - m_receiveDataStarted;
-      NS_LOG_DEBUG("[GTCP] Took " << elapsed.GetMilliSeconds() << "ms to receive all the data");
+      // NS_LOG_DEBUG("[GTCP] Took " << elapsed.GetMilliSeconds() << "ms to receive all the data");
+      logger("resut").add("TRANSFERED_DATA_RECEIVED_TIME_MS", elapsed.GetMilliSeconds()).log();
       // now we simulate sending response
-      NS_LOG_DEBUG("[GTCP] Scheduling the response after " << m_waitTime.GetSeconds() << "s");
+      // NS_LOG_DEBUG("[GTCP] Scheduling the response after " << m_waitTime.GetSeconds() << "s");
+      logger("result").add("SIMULATED_PROCESSING_TIME_S", m_waitTime.GetSeconds()).log();
        Simulator::Schedule (m_waitTime, &GtcpServer::ResponseCycle, this, socket);
       // test(socket);
     }
@@ -223,7 +225,8 @@ void GtcpServer::ResponseCycle(Ptr<Socket> s) {
         Simulator::Schedule (Seconds(0), &GtcpServer::ResponseCycle, this, s);
       } else {
         Time elapsed = Simulator::Now() - m_responseStartTime;
-        NS_LOG_DEBUG("[GTPC] Sending response took " << elapsed.GetMilliSeconds() << "ms" );
+        // NS_LOG_DEBUG("[GTPC] Sending response took " << elapsed.GetMilliSeconds() << "ms" );
+        logger("result").add("RESPONSE_SEND_TIME_MS", elapsed.GetMilliSeconds()).log();
         // means the response is complete
         s->Close();
       }

@@ -36,10 +36,10 @@ CsmaHelper createCsmaHelper (std::string dataRate, std::string queueSize, int de
 int
 main (int argc, char *argv[])
 {
-  LogComponentEnable ("GtcpServer", LOG_LEVEL_DEBUG);
-  LogComponentEnable ("BulkSendApplication2", LOG_LEVEL_DEBUG);
-  LogComponentEnable ("GtcpClient", LOG_LEVEL_INFO);
-  LogComponentEnable ("PScheduler", LOG_LEVEL_DEBUG);
+//   LogComponentEnable ("GtcpServer", LOG_LEVEL_DEBUG);
+//   LogComponentEnable ("BulkSendApplication2", LOG_LEVEL_DEBUG);
+//   LogComponentEnable ("GtcpClient", LOG_LEVEL_INFO);
+//   LogComponentEnable ("PScheduler", LOG_LEVEL_DEBUG);
 
   // topology configurations
   int AGGREGATION_SW_N = 10;

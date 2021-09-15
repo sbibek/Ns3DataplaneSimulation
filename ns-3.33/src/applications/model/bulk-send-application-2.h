@@ -181,6 +181,7 @@ private:
   void QuerySequence(void);
   void DataTransferSequence(int nodeId);
   void InitTransfer(void);
+
 };
 
 } // namespace ns3
