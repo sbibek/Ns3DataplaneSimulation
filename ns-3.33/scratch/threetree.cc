@@ -29,7 +29,7 @@ CsmaHelper createCsmaHelper (std::string dataRate, std::string queueSize, int de
  *  Important** 
  *  1. The data transfer port should be always be 12345 
  *  2. Query port is always 8080
- * 
+ *  3. Background data transfer port is always 9990
  * 
  * */
 
@@ -40,6 +40,7 @@ main (int argc, char *argv[])
 //   LogComponentEnable ("BulkSendApplication2", LOG_LEVEL_DEBUG);
 //   LogComponentEnable ("GtcpClient", LOG_LEVEL_INFO);
 //   LogComponentEnable ("PScheduler", LOG_LEVEL_DEBUG);
+// LogComponentEnable ("BulkSendApplication", LOG_LEVEL_INFO);
 
   // topology configurations
   int AGGREGATION_SW_N = 10;
@@ -298,6 +299,34 @@ main (int argc, char *argv[])
   sourceapp.Stop (Seconds(30));
 #endif
 
+// we will schedule background data transfers from hosts to hosts
+#define BACKGROUND_DATA_TRANSFERS
+#ifdef BACKGROUND_DATA_TRANSFERS
+  // we will install sink on all nodes
+  int psinkPort = 9997;
+  PacketSinkHelper psink ("ns3::TcpSocketFactory",
+                                     InetSocketAddress (Ipv4Address::GetAny (), psinkPort));
+  ApplicationContainer sinkapps = psink.Install(terminals);
+  sinkapps.Start(Seconds(0));
+  sinkapps.Stop(Seconds(50));
+
+
+  std::vector<std::tuple<int,int, int, int>> backgroundTransfersMapTerminal2Terminal;
+  //for example, the transfer between 10 and 20 host start at 0s and stop at 30s
+  backgroundTransfersMapTerminal2Terminal.push_back(std::make_tuple(10, 20, 5, 30));
+
+  for(std::tuple<int, int, int, int> h2h: backgroundTransfersMapTerminal2Terminal) {
+    // this means the transfer is set between them (sender host, destination host, start time, end time)
+    BulkSendHelper psrc ("ns3::TcpSocketFactory",
+                          InetSocketAddress (terminalips.GetAddress(std::get<1>(h2h)), psinkPort));
+    psrc.SetAttribute ("MaxBytes", UintegerValue (1024*1024*2));
+    ApplicationContainer psrcapp = psrc.Install (terminals.Get (std::get<0>(h2h)));                      
+    psrcapp.Start(Seconds(std::get<2>(h2h)));
+    psrcapp.Stop(Seconds(std::get<3>(h2h)));
+  }
+
+#endif
+
 #if __ASCII_TRACE == 1
   AsciiTraceHelper ascii;
   generalCsmaHelper.EnableAsciiAll (ascii.CreateFileStream ("tree.tr"));
@@ -310,6 +339,8 @@ main (int argc, char *argv[])
   Simulator::Run ();
   Simulator::Destroy ();
   NS_LOG_INFO ("Done.");
+ Ptr<PacketSink> sink1 = DynamicCast<PacketSink> (sinkapps.Get (20));
+  std::cout << "Total Bytes Received: " << sink1->GetTotalRx () << std::endl;
 }
 
 CsmaHelper
