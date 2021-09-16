@@ -27,11 +27,33 @@
 #include "ns3/ptr.h"
 #include "ns3/traced-callback.h"
 #include "ns3/seq-ts-size-header.h"
+#include <unordered_map>
 
 namespace ns3 {
 
 class Address;
 class Socket;
+
+
+typedef struct {
+  uint32_t connId;
+  Ptr<Socket> m_socket;
+  bool m_isConnected = false;
+  bool m_sentMetadata = false;
+  bool m_transferCompleted = false;
+  Time m_transferStartedTime;
+  bool m_responseStarted = false;
+  Time m_responseStartedTime;
+
+  // total bytes sent so far
+  uint64_t m_totBytes = 0;
+  Ptr<Packet> m_unsentPacket; //!< Variable to cache unsent packet
+
+  public:
+  void updateSocket(Ptr<Socket> socket) {
+    this->m_socket = socket;
+  }
+} OffloadConnection;
 
 /**
  * \ingroup applications
@@ -118,8 +140,8 @@ private:
    * \param from From address
    * \param to To address
    */
-  void SendHeader (const Address &from, const Address &to);
-  void TestSendData (const Address &from, const Address &to);
+  void SendHeader (const Address &from, const Address &to, OffloadConnection* conn);
+  void TestSendData (const Address &from, const Address &to, Ptr<Socket> socket, OffloadConnection* conn);
 
   Ptr<Socket>     m_socket;       //!< Associated socket
   Address         m_peer;         //!< Peer address
@@ -140,13 +162,12 @@ private:
   uint16_t m_queryPort; //!< Remote peer port
 
   Time m_waitTime; //!< Packet inter-send time
-  bool m_sentMetadata = false;
 
-  bool m_transferCompleted = false;
-  Time m_transferStartedTime;
 
-  bool m_responseStarted = false;
-  Time m_responseStartedTime;
+  // bibek
+  // for multiple transfers at the same time, we need to add that ability
+  std::unordered_map<void*,OffloadConnection*> m_connections;
+  uint32_t connectionId = 0;
 
   /// Traced Callback: sent packets
   TracedCallback<Ptr<const Packet> > m_txTrace;
@@ -179,8 +200,10 @@ private:
   void QueryResponseHandler(Ptr<Socket>);
   void SendQuery(void);
   void QuerySequence(void);
-  void DataTransferSequence(int nodeId);
-  void InitTransfer(void);
+  void DataTransferSequence(std::vector<int> nodes);
+
+  // for multiple connections
+  void InitTransferN(Address& address);
 
 };
 

@@ -168,7 +168,7 @@ BulkSendApplication2::StopApplication (void) // Called at time specified by Stop
 }
 
 void
-BulkSendApplication2::SendHeader (const Address &from, const Address &to)
+BulkSendApplication2::SendHeader (const Address &from, const Address &to, OffloadConnection* conn)
 {
   NS_LOG_FUNCTION (this);
   // NS_LOG_DEBUG("[BulkSend2] Sending bytes information, total following bytes = " << m_maxBytes);
@@ -176,7 +176,7 @@ BulkSendApplication2::SendHeader (const Address &from, const Address &to)
   //     "DEBUG NodeId=" << m_node->GetIdx ()
   //                     << " Sending total bytes of data to expect to the receiver which is "
   //                     << m_maxBytes << "bytes");
-  logger("debug").add("TOTAL_BYTES_TO_SEND", m_maxBytes).log();
+  logger ("debug").add("id", conn->connId).add ("TOTAL_BYTES_TO_SEND", m_maxBytes).log ();
   // first thing to do here is send a packet with details of bytes we will be sending
   DataTransferHeader dth;
   dth.SetTotalBytesFollowingThis (m_maxBytes);
@@ -184,25 +184,25 @@ BulkSendApplication2::SendHeader (const Address &from, const Address &to)
   // // lets send the packet as metadata
   Ptr<Packet> metadata = Create<Packet> (dth.GetSerializedSize ());
   metadata->AddHeader (dth);
-  m_socket->Send (metadata);
-  m_sentMetadata = true;
+  conn->m_socket->Send (metadata);
+  conn->m_sentMetadata = true;
 }
 
 // Private helpers
 
 void
-BulkSendApplication2::TestSendData (const Address &from, const Address &to)
+BulkSendApplication2::TestSendData (const Address &from, const Address &to, Ptr<Socket> socket, OffloadConnection* conn)
 {
 
   NS_LOG_FUNCTION (this);
 
-  if (!m_sentMetadata)
+  if (!conn->m_sentMetadata)
     {
-      SendHeader (from, to);
-      m_transferStartedTime = Simulator::Now ();
+      SendHeader (from, to, conn);
+      conn->m_transferStartedTime = Simulator::Now ();
     }
 
-  while (m_totBytes < m_maxBytes)
+  while (conn->m_totBytes < m_maxBytes)
     { // Time to send more
 
       // uint64_t to allow the comparison later.
@@ -212,15 +212,15 @@ BulkSendApplication2::TestSendData (const Address &from, const Address &to)
       // Make sure we don't send too many
       if (m_maxBytes > 0)
         {
-          toSend = std::min (toSend, m_maxBytes - m_totBytes);
+          toSend = std::min (toSend, m_maxBytes - conn->m_totBytes);
         }
 
       NS_LOG_LOGIC ("sending packet at " << Simulator::Now ());
 
       Ptr<Packet> packet;
-      if (m_unsentPacket)
+      if (conn->m_unsentPacket)
         {
-          packet = m_unsentPacket;
+          packet = conn->m_unsentPacket;
           toSend = packet->GetSize ();
         }
       else if (m_enableSeqTsSizeHeader)
@@ -239,12 +239,12 @@ BulkSendApplication2::TestSendData (const Address &from, const Address &to)
           packet = Create<Packet> (toSend);
         }
 
-      int actual = m_socket->Send (packet);
+      int actual = conn->m_socket->Send (packet);
       if ((unsigned) actual == toSend)
         {
-          m_totBytes += actual;
+          conn->m_totBytes += actual;
           m_txTrace (packet);
-          m_unsentPacket = 0;
+          conn->m_unsentPacket = 0;
         }
       else if (actual == -1)
         {
@@ -252,7 +252,7 @@ BulkSendApplication2::TestSendData (const Address &from, const Address &to)
           // buffer is full. The "DataSent" callback will pop when
           // some buffer space has freed up.
           // NS_LOG_DEBUG ("Unable to send packet; caching for later attempt");
-          m_unsentPacket = packet;
+          conn->m_unsentPacket = packet;
           break;
         }
       else if (actual > 0 && (unsigned) actual < toSend)
@@ -264,9 +264,9 @@ BulkSendApplication2::TestSendData (const Address &from, const Address &to)
                                        << "; fragment saved: " << toSend - (unsigned) actual);
           Ptr<Packet> sent = packet->CreateFragment (0, actual);
           Ptr<Packet> unsent = packet->CreateFragment (actual, (toSend - (unsigned) actual));
-          m_totBytes += actual;
+          conn->m_totBytes += actual;
           m_txTrace (sent);
-          m_unsentPacket = unsent;
+          conn->m_unsentPacket = unsent;
           break;
         }
       else
@@ -276,28 +276,28 @@ BulkSendApplication2::TestSendData (const Address &from, const Address &to)
     }
 
   // now we schedule the response
-  if (m_totBytes >= m_maxBytes && !m_transferCompleted)
+  if (conn->m_totBytes >= m_maxBytes && !conn->m_transferCompleted)
     {
-      m_transferCompleted = true;
-      Time elapsed = Simulator::Now () - m_transferStartedTime;
+      conn->m_transferCompleted = true;
+      Time elapsed = Simulator::Now () - conn->m_transferStartedTime;
       // NS_LOG_DEBUG("[BulkSendApp] Took " << elapsed.GetMilliSeconds() << " to complete the transfer");
       // NS_LOG_DEBUG ("RESULT NodeId=" << m_node->GetIdx ()
       //                                << " Time taken to complete the transfer = "
       //                                << elapsed.GetMilliSeconds () << " ms");
-      logger("result").add("TRANSFER_TIME_MS", elapsed.GetMilliSeconds()).log();
+      logger ("result").add("id", conn->connId).add ("TRANSFER_TIME_MS", elapsed.GetMilliSeconds ()).log ();
     }
 }
 
 void
 BulkSendApplication2::ConnectionSucceeded (Ptr<Socket> socket)
 {
-  NS_LOG_FUNCTION (this << socket);
-  NS_LOG_LOGIC ("BulkSendApplication2 Connection succeeded");
-  m_connected = true;
-  Address from, to;
-  socket->GetSockName (from);
-  socket->GetPeerName (to);
-  // TestSendData(from, to);
+  OffloadConnection* conn = m_connections[(void*)&(*socket)];
+  if(conn == NULL) {
+    logger("error").add("status", "null pointer on offload connections").log();
+  } else {
+    // this means the connection is a success
+    conn->m_isConnected = true;
+  }
 }
 
 void
@@ -311,25 +311,32 @@ void
 BulkSendApplication2::DataSend (Ptr<Socket> socket, uint32_t)
 {
   NS_LOG_FUNCTION (this);
-
-  if (m_connected)
+  // get the appropriate connection
+  OffloadConnection* conn = m_connections[(void*)&(*socket)];
+  if (conn && conn->m_isConnected)
     { // Only send new data if the connection has completed
+      conn->updateSocket(socket);
       Address from, to;
       socket->GetSockName (from);
       socket->GetPeerName (to);
-      // SendData (from, to);
-      // SendQuery();
-      TestSendData (from, to);
+      TestSendData (from, to, socket, conn);
     }
 }
 
 void
 BulkSendApplication2::ReceivedDataCallback (Ptr<Socket> socket)
 {
-  if (m_transferCompleted && !m_responseStarted)
+  OffloadConnection* conn = m_connections[(void*)&(*socket)];
+  if(conn == NULL) {
+    logger("error").add("status", "cannot find appropriate offload connection when receiving data").log();
+    return;
+  }
+
+  conn->updateSocket(socket);
+  if (conn->m_transferCompleted && !conn->m_responseStarted)
     {
-      m_responseStarted = true;
-      m_responseStartedTime = Simulator::Now ();
+      conn->m_responseStarted = true;
+      conn->m_responseStartedTime = Simulator::Now ();
     }
 
   Ptr<Packet> packet;
@@ -349,13 +356,21 @@ BulkSendApplication2::ReceivedDataCallback (Ptr<Socket> socket)
 void
 BulkSendApplication2::NormalCloseCallback (Ptr<Socket> socket)
 {
-  if (m_responseStarted)
+
+  OffloadConnection* conn = m_connections[(void*)&(*socket)];
+  if(conn == NULL) {
+    logger("error").add("status", "cannot find appropriate offload connection when receiving data").log();
+    return;
+  }
+
+
+  if (conn->m_responseStarted)
     {
-      Time elapsed = Simulator::Now () - m_responseStartedTime;
+      Time elapsed = Simulator::Now () - conn->m_responseStartedTime;
       // NS_LOG_DEBUG("[BulkSendApp] Took " << elapsed.GetMilliSeconds() << "ms to receive the response");
       // NS_LOG_DEBUG ("RESULT NodeId=" << m_node->GetIdx () << " Time taken to receive the data = "
       //                                << elapsed.GetMilliSeconds () << " ms");
-      logger("result").add("RESPONSE_RECEIVE_TIME_MS", elapsed.GetMilliSeconds()).log();
+      logger ("result").add("id", conn->connId).add ("RESPONSE_RECEIVE_TIME_MS", elapsed.GetMilliSeconds ()).log ();
     }
   NS_LOG_INFO (this << " [BulkSendApp] Connection Closed Normally");
 }
@@ -379,7 +394,7 @@ BulkSendApplication2::SendQuery (void)
   // NS_LOG_DEBUG ("DEBUG NodeId=" << m_node->GetIdx ()
   //                               << " Sent node ranking query to the schedular \n");
   // NS_LOG_INFO("[Tx Query] swid=" << header.GetNodeId());
-  logger("debug").add("Ranking query sent to the schedular, waiting for the response","").log();
+  logger ("debug").add ("Ranking query sent to the schedular, waiting for the response", "").log ();
 }
 
 void
@@ -402,15 +417,15 @@ BulkSendApplication2::QueryResponseHandler (Ptr<Socket> socket)
           // std::cout << Simulator::Now () << " Response received " << response.GetCount ()
           //           << std::endl
           //           << std::flush;
-          logger("debug").add("Total result count in response",response.GetCount()).log();
+          logger ("debug").add ("Total result count in response", response.GetCount ()).log ();
           QueryValue value;
           for (int i = 0; i < response.GetCount (); i++)
             {
-               packet->RemoveHeader (value);
+              packet->RemoveHeader (value);
               // NS_LOG_DEBUG ("DEBUG NodeId=" << m_node->GetIdx ()
               //                               << " { nodeid=" << value.GetNodeId ()
               //                               << " value=" << value.GetValue () << "}");
-              logger("debug").add(std::to_string(value.GetNodeId()),value.GetValue()).log();
+              logger ("debug").add (std::to_string (value.GetNodeId ()), value.GetValue ()).log ();
               results.push_back (std::make_tuple (value.GetNodeId (), value.GetValue ()));
             }
         }
@@ -418,9 +433,13 @@ BulkSendApplication2::QueryResponseHandler (Ptr<Socket> socket)
 
   if (results.size () > 0)
     {
+      std::vector<int> nodes;
+      nodes.push_back(std::get<0> (results.at (0)));
+      nodes.push_back(std::get<0> (results.at (1)));
+      nodes.push_back(std::get<0> (results.at (11)));
       // means we have results
       Simulator::Schedule (Seconds (0.0), &BulkSendApplication2::DataTransferSequence, this,
-                           std::get<0> (results.at (0)));
+                          nodes );
     }
 }
 
@@ -431,7 +450,7 @@ BulkSendApplication2::QuerySequence (void)
 }
 
 void
-BulkSendApplication2::DataTransferSequence (int nodeId)
+BulkSendApplication2::DataTransferSequence (std::vector<int> nodes)
 {
   // lets get the adress of that specific node
   Ipv4InterfaceContainer *ip = ((Ipv4InterfaceContainer *) m_node->getTerminalIps ());
@@ -440,74 +459,64 @@ BulkSendApplication2::DataTransferSequence (int nodeId)
       NS_LOG_DEBUG ("DEBUG NodeId=" << m_node->GetIdx () << " Interfaces not set on the Node");
     }
 //  ns3::Address address = ns3::Address(ip->GetAddress(nodeId));
+for(int node: nodes){
 #if 1
   std::stringstream peerAddressStringStream, p2;
-  peerAddressStringStream << Ipv4Address::ConvertFrom (ip->GetAddress (nodeId));
+  peerAddressStringStream << Ipv4Address::ConvertFrom (ip->GetAddress (node));
   //  std::cout << " " << nodeId << " = " << peerAddressStringStream.str () << std::endl;
 #endif
 
   // assign this to the peer that we need to connect to
   //  m_peer = ns3::Address(ip->GetAddress(nodeId));
-  m_peer = (InetSocketAddress (ip->GetAddress (nodeId), 12345));
+  Address m_peer_address = (InetSocketAddress (ip->GetAddress (node), 12345));
   // and then initiate the transfer sequence
   // NS_LOG_DEBUG ("DEBUG NodeId=" << m_node->GetIdx () << " Initiating transfer to Node(" << nodeId
-                                // << ") IP=" << peerAddressStringStream.str ());
-  logger("debug").add("Initiating data tranfer to ", peerAddressStringStream.str()).log();
-  Simulator::Schedule (Seconds (0.0), &BulkSendApplication2::InitTransfer, this);
+  // << ") IP=" << peerAddressStringStream.str ());
+  logger ("debug").add ("Initiating data tranfer to ", peerAddressStringStream.str ()).log ();
+  Simulator::Schedule (Seconds (0.0), &BulkSendApplication2::InitTransferN, this, m_peer_address);
+}
 }
 
 void
-BulkSendApplication2::InitTransfer (void)
+BulkSendApplication2::InitTransferN (Address &address)
 {
-  if (!m_socket)
+  // since we are to start the transfer now, so we have to create socket now
+  Ptr<Socket> currentSocket = Socket::CreateSocket (GetNode (), TcpSocketFactory::GetTypeId ());
+  int ret = -1;
+  if (currentSocket->GetSocketType () != Socket::NS3_SOCK_STREAM &&
+      currentSocket->GetSocketType () != Socket::NS3_SOCK_SEQPACKET)
     {
-      m_socket = Socket::CreateSocket (GetNode (), m_tid);
-      int ret = -1;
-
-      // Fatal error if socket type is not NS3_SOCK_STREAM or NS3_SOCK_SEQPACKET
-      if (m_socket->GetSocketType () != Socket::NS3_SOCK_STREAM &&
-          m_socket->GetSocketType () != Socket::NS3_SOCK_SEQPACKET)
-        {
-          NS_FATAL_ERROR ("Using BulkSend with an incompatible socket type. "
-                          "BulkSend requires SOCK_STREAM or SOCK_SEQPACKET. "
-                          "In other words, use TCP instead of UDP.");
-        }
-
-      if (!m_local.IsInvalid ())
-        {
-          NS_ABORT_MSG_IF ((Inet6SocketAddress::IsMatchingType (m_peer) &&
-                            InetSocketAddress::IsMatchingType (m_local)) ||
-                               (InetSocketAddress::IsMatchingType (m_peer) &&
-                                Inet6SocketAddress::IsMatchingType (m_local)),
-                           "Incompatible peer and local address IP version");
-          ret = m_socket->Bind (m_local);
-        }
-      else
-        {
-          if (Inet6SocketAddress::IsMatchingType (m_peer))
-            {
-              ret = m_socket->Bind6 ();
-            }
-          else if (InetSocketAddress::IsMatchingType (m_peer))
-            {
-              ret = m_socket->Bind ();
-            }
-        }
-
-      if (ret == -1)
-        {
-          NS_FATAL_ERROR ("Failed to bind socket");
-        }
-
-      m_socket->Connect (m_peer);
-      // m_socket->ShutdownRecv ();
-      m_socket->SetConnectCallback (MakeCallback (&BulkSendApplication2::ConnectionSucceeded, this),
-                                    MakeCallback (&BulkSendApplication2::ConnectionFailed, this));
-      m_socket->SetCloseCallbacks (MakeCallback (&BulkSendApplication2::NormalCloseCallback, this),
-                                   MakeCallback (&BulkSendApplication2::ErrorCloseCallback, this));
-      m_socket->SetSendCallback (MakeCallback (&BulkSendApplication2::DataSend, this));
-      m_socket->SetRecvCallback (MakeCallback (&BulkSendApplication2::ReceivedDataCallback, this));
+      NS_FATAL_ERROR ("Using BulkSend with an incompatible socket type. "
+                      "BulkSend requires SOCK_STREAM or SOCK_SEQPACKET. "
+                      "In other words, use TCP instead of UDP.");
     }
+
+  if (Inet6SocketAddress::IsMatchingType (address))
+    {
+      ret = currentSocket->Bind6 ();
+    }
+  else if (InetSocketAddress::IsMatchingType (address))
+    {
+      ret = currentSocket->Bind ();
+    }
+  if (ret == -1)
+    {
+      NS_FATAL_ERROR ("Failed to bind socket");
+    }
+  // now we can publish the socket
+  OffloadConnection* conn =  new OffloadConnection ();
+  conn->connId = (++connectionId);
+  m_connections[(void*)&(*currentSocket)] = conn;
+
+  currentSocket->Connect (address);
+  // m_socket->ShutdownRecv ();
+  currentSocket->SetConnectCallback (
+      MakeCallback (&BulkSendApplication2::ConnectionSucceeded, this),
+      MakeCallback (&BulkSendApplication2::ConnectionFailed, this));
+  currentSocket->SetCloseCallbacks (MakeCallback (&BulkSendApplication2::NormalCloseCallback, this),
+                                    MakeCallback (&BulkSendApplication2::ErrorCloseCallback, this));
+  currentSocket->SetSendCallback (MakeCallback (&BulkSendApplication2::DataSend, this));
+  currentSocket->SetRecvCallback (MakeCallback (&BulkSendApplication2::ReceivedDataCallback, this));
 }
 
 } // Namespace ns3
