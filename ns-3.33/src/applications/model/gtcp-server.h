@@ -29,8 +29,24 @@
 #include "ns3/address.h"
 #include "ns3/traced-callback.h"
 #include "packet-loss-counter.h"
+#include <unordered_map>
 
 namespace ns3 {
+
+
+typedef struct {
+  Ptr<Socket> m_socket;
+  uint64_t m_totalBytesExpected = 2147483647;
+  uint64_t m_totalBulkTransferRcvdBytes = 0;
+  uint64_t m_totalResponseBytes = 1;
+  uint64_t m_totalResponseBytesSent = 0;
+  bool m_metadataReceived = false;
+  bool m_responseCycle = false;
+
+  Time m_receiveDataStarted;
+  bool m_responseStarted = false;
+  Time m_responseStartTime;
+} GtcpConnection;
 
 class GtcpServer : public Application
 {
@@ -69,6 +85,7 @@ public:
   void test(Ptr<Socket>);
   void ResponseCycle(Ptr<Socket>);
 
+
 protected:
   virtual void DoDispose (void);
 
@@ -81,17 +98,9 @@ private:
   uint16_t m_port; 
   Time m_waitTime;
 
-  uint64_t m_totalBytesExpected = 2147483647;
-  uint64_t m_totalBulkTransferRcvdBytes = 0;
   uint64_t m_totalResponseBytes = 1;
-  uint64_t m_totalResponseBytesSent = 0;
-  bool m_metadataReceived = false;
-  bool m_responseCycle = false;
 
-
-  Time m_receiveDataStarted;
-  bool m_responseStarted = false;
-  Time m_responseStartTime;
+  std::unordered_map<void*, GtcpConnection*> m_connections;
 
 };
 

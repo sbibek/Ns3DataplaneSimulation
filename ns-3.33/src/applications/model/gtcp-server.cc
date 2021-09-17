@@ -63,7 +63,7 @@ GtcpServer::GetTypeId (void)
   return tid;
 }
 
-GtcpServer::GtcpServer (): m_responseCycle(false)
+GtcpServer::GtcpServer () 
 {
   NS_LOG_FUNCTION (this);
 }
@@ -130,6 +130,11 @@ GtcpServer::ConnectionRequestCallback (Ptr<Socket> socket, const Address &addres
 void
 GtcpServer::NewConnectionCreatedCallback (Ptr<Socket> socket, const Address &address)
 {
+  // lets store this socket
+  GtcpConnection* conn = new GtcpConnection();
+  conn->m_socket = socket;
+  m_connections[(void*)(&(*socket))] = conn;
+
   NS_LOG_INFO (this << " [GTCP] New connection received from "
                     << InetSocketAddress::ConvertFrom (address).GetIpv4 ());
   socket->SetCloseCallbacks (MakeCallback (&GtcpServer::NormalCloseCallback, this),
@@ -155,38 +160,40 @@ GtcpServer::ErrorCloseCallback (Ptr<Socket> socket)
 void
 GtcpServer::ReceivedDataCallback (Ptr<Socket> socket)
 {
+  GtcpConnection* conn = m_connections[(void*)(&(*socket))];
+
   // NS_LOG_INFO (this << " [GTCP] Received Data Callback");
   Ptr<Packet> packet;
   Address from;
 
-  while ((packet = socket->RecvFrom (from)) && m_totalBulkTransferRcvdBytes < m_totalBytesExpected )
+  while ((packet = socket->RecvFrom (from)) && conn->m_totalBulkTransferRcvdBytes < conn->m_totalBytesExpected )
     {
       if (packet->GetSize () == 0)
         break;
 
-       m_totalBulkTransferRcvdBytes += packet->GetSize();
+      conn->m_totalBulkTransferRcvdBytes += packet->GetSize();
 
       NS_LOG_INFO (this << " [GTCP] A packet of " << packet->GetSize () << " bytes"
                         << " received from " << InetSocketAddress::ConvertFrom (from).GetIpv4 ()
                         << " port " << InetSocketAddress::ConvertFrom (from).GetPort () 
-                        << "Total so far = " << m_totalBulkTransferRcvdBytes <<" bytes");
+                        << "Total so far = " << conn->m_totalBulkTransferRcvdBytes <<" bytes");
 
-      if(!m_metadataReceived) {
-        m_receiveDataStarted = Simulator::Now();
+      if(!conn->m_metadataReceived) {
+       conn->m_receiveDataStarted = Simulator::Now();
         // lets extract metadata
         DataTransferHeader hdr;
         packet->RemoveHeader(hdr);
-        m_totalBytesExpected = hdr.GetTotalBytesFollowingThis();
-        m_metadataReceived = true;
+        conn->m_totalBytesExpected = hdr.GetTotalBytesFollowingThis();
+        conn->m_metadataReceived = true;
         NS_LOG_INFO(this << "Got metadata, total bytes expected = " <<  hdr.GetTotalBytesFollowingThis());
       }
 
     }
 
 
-    if(!m_responseCycle && m_totalBulkTransferRcvdBytes >= m_totalBytesExpected) {
-      m_responseCycle = true;
-      Time elapsed = Simulator::Now() - m_receiveDataStarted;
+    if(!conn->m_responseCycle && conn->m_totalBulkTransferRcvdBytes >= conn->m_totalBytesExpected) {
+      conn->m_responseCycle = true;
+      Time elapsed = Simulator::Now() - conn->m_receiveDataStarted;
       // NS_LOG_DEBUG("[GTCP] Took " << elapsed.GetMilliSeconds() << "ms to receive all the data");
       logger("resut").add("TRANSFERED_DATA_RECEIVED_TIME_MS", elapsed.GetMilliSeconds()).log();
       // now we simulate sending response
@@ -201,12 +208,13 @@ GtcpServer::ReceivedDataCallback (Ptr<Socket> socket)
 
 
 void GtcpServer::ResponseCycle(Ptr<Socket> s) {
-      if(m_responseStarted == false) {
-          m_responseStarted = true;
-          m_responseStartTime = Simulator::Now();
+      GtcpConnection* conn = m_connections[(void*)(&(*s))];
+      if(conn->m_responseStarted == false) {
+          conn->m_responseStarted = true;
+          conn->m_responseStartTime = Simulator::Now();
       }
 
-      uint64_t toSend = std::min((uint64_t)512, m_totalResponseBytes-m_totalResponseBytesSent);
+      uint64_t toSend = std::min((uint64_t)512, m_totalResponseBytes-conn->m_totalResponseBytesSent);
       NS_LOG_INFO("[GTCP] Response cycle Remaining=" << toSend << " bytes");
 
       Ptr<Packet> load = Create<Packet>(toSend);
@@ -219,12 +227,12 @@ void GtcpServer::ResponseCycle(Ptr<Socket> s) {
         return;
       }
 
-       m_totalResponseBytesSent += toSend;
-      if(m_totalResponseBytesSent < m_totalResponseBytes) {
+       conn->m_totalResponseBytesSent += toSend;
+      if(conn->m_totalResponseBytesSent < m_totalResponseBytes) {
         // means need to reschedule it
         Simulator::Schedule (Seconds(0), &GtcpServer::ResponseCycle, this, s);
       } else {
-        Time elapsed = Simulator::Now() - m_responseStartTime;
+        Time elapsed = Simulator::Now() - conn->m_responseStartTime;
         // NS_LOG_DEBUG("[GTPC] Sending response took " << elapsed.GetMilliSeconds() << "ms" );
         logger("result").add("RESPONSE_SEND_TIME_MS", elapsed.GetMilliSeconds()).log();
         // means the response is complete
