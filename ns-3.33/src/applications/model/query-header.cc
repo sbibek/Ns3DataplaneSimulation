@@ -46,6 +46,14 @@ QueryHeader::GetNodeId (void) const
   return m_nodeId;
 }
 
+void QueryHeader::SetSelectionStrategy(uint16_t ss) {
+  m_selectionStrategy = ss;
+}
+
+uint16_t QueryHeader::GetSelectionStrategy(void) const {
+  return m_selectionStrategy;
+}
+
 TypeId
 QueryHeader::GetTypeId (void)
 {
@@ -55,6 +63,7 @@ QueryHeader::GetTypeId (void)
                           .AddConstructor<QueryHeader> ();
   return tid;
 }
+
 TypeId
 QueryHeader::GetInstanceTypeId (void) const
 {
@@ -70,7 +79,7 @@ uint32_t
 QueryHeader::GetSerializedSize (void) const
 {
   NS_LOG_FUNCTION (this);
-  return 2;
+  return 4;
 }
 
 void
@@ -79,6 +88,7 @@ QueryHeader::Serialize (Buffer::Iterator start) const
   NS_LOG_FUNCTION (this << &start);
   Buffer::Iterator i = start;
   i.WriteHtonU16 (m_nodeId);
+  i.WriteHtonU16(m_selectionStrategy);
 }
 uint32_t
 QueryHeader::Deserialize (Buffer::Iterator start)
@@ -86,6 +96,7 @@ QueryHeader::Deserialize (Buffer::Iterator start)
   NS_LOG_FUNCTION (this << &start);
   Buffer::Iterator i = start;
   m_nodeId = i.ReadNtohU16 ();
+  m_selectionStrategy = i.ReadNtohU16();
   return GetSerializedSize ();
 }
 

@@ -38,6 +38,7 @@
 #include "query-response.h"
 #include "query-value.h"
 #include "ns3/ipv4-interface-container.h"
+#include <experimental/random>
 
 namespace ns3 {
 
@@ -372,6 +373,7 @@ BulkSendApplication2::SendQuery (void)
 {
   QueryHeader header;
   header.SetNodeId (m_node->GetIdx ());
+  header.SetSelectionStrategy((uint16_t)m_serverSelectionStrategy);
 
   Ptr<Packet> packet = Create<Packet> (header.GetSerializedSize ());
   packet->AddHeader (header);
@@ -380,7 +382,7 @@ BulkSendApplication2::SendQuery (void)
   // NS_LOG_DEBUG ("DEBUG NodeId=" << m_node->GetIdx ()
   //                               << " Sent node ranking query to the schedular \n");
   // NS_LOG_INFO("[Tx Query] swid=" << header.GetNodeId());
-  logger ("debug").add ("Ranking query sent to the schedular, waiting for the response", "").log ();
+  logger ("debug").add ("Ranking query sent to the scheduler, waiting for the response", "").log ();
 }
 
 void
@@ -421,10 +423,33 @@ BulkSendApplication2::QueryResponseHandler (Ptr<Socket> socket)
     {
       std::vector<int> nodes;
       // offload to requested amount of servers
-      for(int i=0;i<m_totalServersToOffload;i++)
-        nodes.push_back(std::get<0> (results.at (i)));
+      MyLogger _log = logger("debug").add("selection strategy",(m_serverSelectionStrategy == 0 ? "Optimal": (m_serverSelectionStrategy == 1 ? "Near" : "Random")));
+      if (m_serverSelectionStrategy == OF_SELECTION_STRATEGY_OPTIMAL ||
+          m_serverSelectionStrategy == OF_SELECTION_STRATEGY_NEAR)
+        {
+          for (int i = 0; i < m_totalServersToOffload; i++){
+            nodes.push_back (std::get<0> (results.at (i)));
+            _log.add("node", i );
+          }
+        }
+      else
+        {
+          // means we are doing random selection
+          std::map<int, int*> selection;
+          while(nodes.size() < m_totalServersToOffload) {
+            int g = std::experimental::randint(0, (int)(results.size()-1));
+            if(selection[g] == NULL)  {
+              selection[g] = new int;
+              _log.add("node", g );
+              nodes.push_back(g);
+            }
+          }
+        }
+
+        // log the selection
 
       logger("debug").add("Total number of servers to offload", m_totalServersToOffload).log();
+      _log.log();
       // means we have results
       Simulator::Schedule (Seconds (0.0), &BulkSendApplication2::DataTransferSequence, this,
                           nodes );

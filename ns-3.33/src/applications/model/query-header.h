@@ -42,8 +42,12 @@ public:
   void SetNodeId(uint16_t);
   uint16_t GetNodeId(void) const;
 
+  void SetSelectionStrategy(uint16_t);
+  uint16_t GetSelectionStrategy(void) const;
+
 private:
   uint16_t m_nodeId;
+  uint16_t m_selectionStrategy;
 };
 
 } // namespace ns3

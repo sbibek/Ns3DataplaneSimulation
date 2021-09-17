@@ -240,7 +240,7 @@ void
 PScheduler::HandleQuery (QueryHeader &header, Address &from, Ptr<Socket> socket)
 {
   // NS_LOG_DEBUG("[Rx Query] swid=" << header.GetNodeId());
-  logger("debug").add("app", "scheduler").add("received query from", header.GetNodeId()).log();
+  logger("debug").add("app", "scheduler").add("received query from", header.GetNodeId()).add("selection strategy", header.GetSelectionStrategy()).log();
 
   QueryResponse response;
   Ptr<Packet> packet = Create<Packet>(response.GetSerializedSize());
@@ -254,7 +254,9 @@ PScheduler::HandleQuery (QueryHeader &header, Address &from, Ptr<Socket> socket)
     packet->AddHeader(v);
   }
   #else
-    std::vector<std::tuple<int,int>> results = schedulingKernel(store.tracePathWithTuple(header.GetNodeId()));
+    std::vector<std::tuple<int, int>> rankedlist = store.tracePathWithTuple(header.GetNodeId(), header.GetSelectionStrategy());
+    // Use optimal scheduling kernel when strategy is optiomal which is 0
+    std::vector<std::tuple<int,int>> results = header.GetSelectionStrategy() == 0 ? schedulingKernel(rankedlist) : rankedlist;
     std::vector<std::tuple<int,int>>::iterator i = results.end();
     while(i != results.begin()) {
       --i;

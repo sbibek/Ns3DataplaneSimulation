@@ -59,7 +59,18 @@ int GTCP_DATA_TRANSFER_PORT = 12345;
 int OF_SELECTION_STRATEGY_OPTIMAL = 0;
 int OF_SELECTION_STRATEGY_NEAR = 1;
 int OF_SELECTION_STRATEGY_RAND = 2;
+
+
+// offload plans (which node to offload, how many servers to offload to, max bytes to offload per server, selection_mode, start_time, end_time)
+std::vector<std::tuple<int, int, uint64_t, int, int, int>> offloadPlans;
+
 // --------------------------------------------------------
+
+/**/
+/************* Background transfer Application conf ********************/
+// from node, to node, start time, end time
+std::vector<std::tuple<int, int, int, int>> backgroundTransfersMapTerminal2Terminal;
+// -----------------------------------------------------------------------------------
 
 CsmaHelper createCsmaHelper (std::string dataRate, std::string queueSize, int delayMicroSec);
 
@@ -293,11 +304,9 @@ main (int argc, char *argv[])
   gtcpOffloadApp.Start (Seconds (1));
   gtcpOffloadApp.Stop (Seconds (30));
 
-  // offload plans (which node to offload, how many servers to offload to, max bytes to offload per server, selection_mode, start_time, end_time)
   // selection mode : 0 = OPTIMAL, 1 = NEAR, 2 = RANDOM
-  std::vector<std::tuple<int, int, uint64_t, int, int, int>> offloadPlans;
-  offloadPlans.push_back(std::make_tuple(0, 3, 1024*1024*2, OF_SELECTION_STRATEGY_OPTIMAL, 10, 30));
-  offloadPlans.push_back(std::make_tuple(5, 3, 1024*1024*2, OF_SELECTION_STRATEGY_OPTIMAL, 10, 34));
+  offloadPlans.push_back(std::make_tuple(0, 3, 1024*1024*2, OF_SELECTION_STRATEGY_RAND, 10, 30));
+  // offloadPlans.push_back(std::make_tuple(5, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 10, 34));
 
   for(std::tuple<int, int, uint64_t, int, int, int> ofplan: offloadPlans) {
     GtcpOffloadHelper offload;
@@ -327,7 +336,6 @@ main (int argc, char *argv[])
   sinkapps.Start (Seconds (0));
   sinkapps.Stop (Seconds (50));
 
-  std::vector<std::tuple<int, int, int, int>> backgroundTransfersMapTerminal2Terminal;
   //for example, the transfer between 10 and 20 host start at 0s and stop at 30s
   backgroundTransfersMapTerminal2Terminal.push_back (std::make_tuple (10, 20, 5, 30));
 

@@ -34,8 +34,8 @@ namespace ns3 {
 class Address;
 class Socket;
 
-
-typedef struct {
+typedef struct
+{
   uint32_t connId;
   Ptr<Socket> m_socket;
   bool m_isConnected = false;
@@ -49,8 +49,10 @@ typedef struct {
   uint64_t m_totBytes = 0;
   Ptr<Packet> m_unsentPacket; //!< Variable to cache unsent packet
 
-  public:
-  void updateSocket(Ptr<Socket> socket) {
+public:
+  void
+  updateSocket (Ptr<Socket> socket)
+  {
     this->m_socket = socket;
   }
 } OffloadConnection;
@@ -130,24 +132,26 @@ public:
 
 protected:
   virtual void DoDispose (void);
+
 private:
   // inherited from Application base class.
-  virtual void StartApplication (void);    // Called at time specified by Start
-  virtual void StopApplication (void);     // Called at time specified by Stop
+  virtual void StartApplication (void); // Called at time specified by Start
+  virtual void StopApplication (void); // Called at time specified by Stop
 
   /**
    * \brief Send data until the L4 transmission buffer is full.
    * \param from From address
    * \param to To address
    */
-  void SendHeader (const Address &from, const Address &to, OffloadConnection* conn);
-  void TestSendData (const Address &from, const Address &to, Ptr<Socket> socket, OffloadConnection* conn);
+  void SendHeader (const Address &from, const Address &to, OffloadConnection *conn);
+  void TestSendData (const Address &from, const Address &to, Ptr<Socket> socket,
+                     OffloadConnection *conn);
 
-  uint32_t        m_sendSize;     //!< Size of data to send each time
-  uint64_t        m_maxBytes;     //!< Limit total number of bytes sent
-  TypeId          m_tid;          //!< The type of protocol to use.
-  uint32_t        m_seq {0};      //!< Sequence
-  bool            m_enableSeqTsSizeHeader {false}; //!< Enable or disable the SeqTsSizeHeader
+  uint32_t m_sendSize; //!< Size of data to send each time
+  uint64_t m_maxBytes; //!< Limit total number of bytes sent
+  TypeId m_tid; //!< The type of protocol to use.
+  uint32_t m_seq{0}; //!< Sequence
+  bool m_enableSeqTsSizeHeader{false}; //!< Enable or disable the SeqTsSizeHeader
 
   static uint32_t connectionId;
   uint16_t m_totalServersToOffload = 1;
@@ -159,16 +163,20 @@ private:
 
   Time m_waitTime; //!< Packet inter-send time
 
+  int OF_SELECTION_STRATEGY_OPTIMAL = 0;
+  int OF_SELECTION_STRATEGY_NEAR = 1;
+  int OF_SELECTION_STRATEGY_RAND = 2;
 
   // bibek
   // for multiple transfers at the same time, we need to add that ability
-  std::unordered_map<void*,OffloadConnection*> m_connections;
+  std::unordered_map<void *, OffloadConnection *> m_connections;
 
   /// Traced Callback: sent packets
-  TracedCallback<Ptr<const Packet> > m_txTrace;
+  TracedCallback<Ptr<const Packet>> m_txTrace;
 
   /// Callback for tracing the packet Tx events, includes source, destination,  the packet sent, and header
-  TracedCallback<Ptr<const Packet>, const Address &, const Address &, const SeqTsSizeHeader &> m_txTraceWithSeqTsSize;
+  TracedCallback<Ptr<const Packet>, const Address &, const Address &, const SeqTsSizeHeader &>
+      m_txTraceWithSeqTsSize;
 
 private:
   /**
@@ -191,15 +199,13 @@ private:
   void NormalCloseCallback (Ptr<Socket> socket);
   void ErrorCloseCallback (Ptr<Socket> socket);
 
-
-  void QueryResponseHandler(Ptr<Socket>);
-  void SendQuery(void);
-  void QuerySequence(void);
-  void DataTransferSequence(std::vector<int> nodes);
+  void QueryResponseHandler (Ptr<Socket>);
+  void SendQuery (void);
+  void QuerySequence (void);
+  void DataTransferSequence (std::vector<int> nodes);
 
   // for multiple connections
-  void InitTransferN(Address& address);
-
+  void InitTransferN (Address &address);
 };
 
 } // namespace ns3
