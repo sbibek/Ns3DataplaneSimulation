@@ -46,6 +46,14 @@ DataTransferHeader::GetTotalBytesFollowingThis (void) const
   return m_totalBytesFollowingThis;
 }
 
+  void DataTransferHeader::SetConnectionId(uint64_t cid){
+    this->m_connectionId = cid;
+  }
+
+  uint64_t DataTransferHeader::GetConnectionId(void) const{
+    return m_connectionId;
+  }
+
 TypeId
 DataTransferHeader::GetTypeId (void)
 {
@@ -70,7 +78,7 @@ uint32_t
 DataTransferHeader::GetSerializedSize (void) const
 {
   NS_LOG_FUNCTION (this);
-  return 8;
+  return 16;
 }
 
 void
@@ -79,6 +87,7 @@ DataTransferHeader::Serialize (Buffer::Iterator start) const
   NS_LOG_FUNCTION (this << &start);
   Buffer::Iterator i = start;
   i.WriteHtonU64 (m_totalBytesFollowingThis);
+  i.WriteHtonU64 (m_connectionId);
 }
 uint32_t
 DataTransferHeader::Deserialize (Buffer::Iterator start)
@@ -86,6 +95,7 @@ DataTransferHeader::Deserialize (Buffer::Iterator start)
   NS_LOG_FUNCTION (this << &start);
   Buffer::Iterator i = start;
   m_totalBytesFollowingThis = i.ReadNtohU64 ();
+  m_connectionId = i.ReadNtohU64();
   return GetSerializedSize ();
 }
 

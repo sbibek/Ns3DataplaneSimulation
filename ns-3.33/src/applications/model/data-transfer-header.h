@@ -42,8 +42,12 @@ public:
   void SetTotalBytesFollowingThis(uint64_t);
   uint64_t GetTotalBytesFollowingThis(void) const;
 
+  void SetConnectionId(uint64_t);
+  uint64_t GetConnectionId(void) const;
+
 private:
   uint64_t m_totalBytesFollowingThis;
+  uint64_t m_connectionId;
 };
 
 } // namespace ns3

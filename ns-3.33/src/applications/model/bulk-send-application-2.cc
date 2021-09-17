@@ -150,10 +150,11 @@ BulkSendApplication2::SendHeader (const Address &from, const Address &to, Offloa
   //     "DEBUG NodeId=" << m_node->GetIdx ()
   //                     << " Sending total bytes of data to expect to the receiver which is "
   //                     << m_maxBytes << "bytes");
-  logger ("debug").add("id", conn->connId).add ("TOTAL_BYTES_TO_SEND", m_maxBytes).log ();
+  logger ("debug").add("connection-id", conn->connId).add ("TOTAL_BYTES_TO_SEND", m_maxBytes).log ();
   // first thing to do here is send a packet with details of bytes we will be sending
   DataTransferHeader dth;
   dth.SetTotalBytesFollowingThis (m_maxBytes);
+  dth.SetConnectionId(conn->connId);
 
   // // lets send the packet as metadata
   Ptr<Packet> metadata = Create<Packet> (dth.GetSerializedSize ());
@@ -258,7 +259,7 @@ BulkSendApplication2::TestSendData (const Address &from, const Address &to, Ptr<
       // NS_LOG_DEBUG ("RESULT NodeId=" << m_node->GetIdx ()
       //                                << " Time taken to complete the transfer = "
       //                                << elapsed.GetMilliSeconds () << " ms");
-      logger ("result").add("id", conn->connId).add ("TRANSFER_TIME_MS", elapsed.GetMilliSeconds ()).log ();
+      logger ("result").add("connection-id", conn->connId).add ("TRANSFER_TIME_MS", elapsed.GetMilliSeconds ()).log ();
     }
 }
 
@@ -344,7 +345,7 @@ BulkSendApplication2::NormalCloseCallback (Ptr<Socket> socket)
       // NS_LOG_DEBUG("[BulkSendApp] Took " << elapsed.GetMilliSeconds() << "ms to receive the response");
       // NS_LOG_DEBUG ("RESULT NodeId=" << m_node->GetIdx () << " Time taken to receive the data = "
       //                                << elapsed.GetMilliSeconds () << " ms");
-      logger ("result").add("id", conn->connId).add ("RESPONSE_RECEIVE_TIME_MS", elapsed.GetMilliSeconds ()).log ();
+      logger ("result").add("connection-id", conn->connId).add ("RESPONSE_RECEIVE_TIME_MS", elapsed.GetMilliSeconds ()).log ();
     }
   NS_LOG_INFO (this << " [BulkSendApp] Connection Closed Normally");
 }
@@ -408,9 +409,10 @@ BulkSendApplication2::QueryResponseHandler (Ptr<Socket> socket)
   if (results.size () > 0)
     {
       std::vector<int> nodes;
+
       nodes.push_back(std::get<0> (results.at (0)));
-      nodes.push_back(std::get<0> (results.at (1)));
-      nodes.push_back(std::get<0> (results.at (11)));
+      // nodes.push_back(std::get<0> (results.at (1)));
+      // nodes.push_back(std::get<0> (results.at (11)));
       // means we have results
       Simulator::Schedule (Seconds (0.0), &BulkSendApplication2::DataTransferSequence, this,
                           nodes );

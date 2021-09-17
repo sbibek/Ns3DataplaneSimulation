@@ -184,8 +184,10 @@ GtcpServer::ReceivedDataCallback (Ptr<Socket> socket)
         DataTransferHeader hdr;
         packet->RemoveHeader(hdr);
         conn->m_totalBytesExpected = hdr.GetTotalBytesFollowingThis();
+        conn->m_connId = hdr.GetConnectionId();
         conn->m_metadataReceived = true;
         NS_LOG_INFO(this << "Got metadata, total bytes expected = " <<  hdr.GetTotalBytesFollowingThis());
+        logger("debug").add("connection-id", conn->m_connId).add("gtcpserver expecting total bytes", conn->m_totalBytesExpected).log();
       }
 
     }
@@ -195,10 +197,10 @@ GtcpServer::ReceivedDataCallback (Ptr<Socket> socket)
       conn->m_responseCycle = true;
       Time elapsed = Simulator::Now() - conn->m_receiveDataStarted;
       // NS_LOG_DEBUG("[GTCP] Took " << elapsed.GetMilliSeconds() << "ms to receive all the data");
-      logger("resut").add("TRANSFERED_DATA_RECEIVED_TIME_MS", elapsed.GetMilliSeconds()).log();
+      logger("resut").add("connection-id", conn->m_connId).add("TRANSFERED_DATA_RECEIVED_TIME_MS", elapsed.GetMilliSeconds()).log();
       // now we simulate sending response
       // NS_LOG_DEBUG("[GTCP] Scheduling the response after " << m_waitTime.GetSeconds() << "s");
-      logger("result").add("SIMULATED_PROCESSING_TIME_S", m_waitTime.GetSeconds()).log();
+      logger("result").add("connection-id", conn->m_connId).add("SIMULATED_PROCESSING_TIME_S", m_waitTime.GetSeconds()).log();
        Simulator::Schedule (m_waitTime, &GtcpServer::ResponseCycle, this, socket);
       // test(socket);
     }
@@ -234,7 +236,7 @@ void GtcpServer::ResponseCycle(Ptr<Socket> s) {
       } else {
         Time elapsed = Simulator::Now() - conn->m_responseStartTime;
         // NS_LOG_DEBUG("[GTPC] Sending response took " << elapsed.GetMilliSeconds() << "ms" );
-        logger("result").add("RESPONSE_SEND_TIME_MS", elapsed.GetMilliSeconds()).log();
+        logger("result").add("connection-id", conn->m_connId).add("RESPONSE_SEND_TIME_MS", elapsed.GetMilliSeconds()).log();
         // means the response is complete
         s->Close();
       }

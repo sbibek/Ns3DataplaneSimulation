@@ -35,6 +35,7 @@ namespace ns3 {
 
 
 typedef struct {
+  uint64_t m_connId;
   Ptr<Socket> m_socket;
   uint64_t m_totalBytesExpected = 2147483647;
   uint64_t m_totalBulkTransferRcvdBytes = 0;
