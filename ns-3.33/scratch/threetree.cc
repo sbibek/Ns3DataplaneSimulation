@@ -289,7 +289,10 @@ main (int argc, char *argv[])
   // source0.SetRemote(sinkAddress)
   source0.SetAttribute ("MaxBytes", UintegerValue (1024 * 1024 * 2));
   source0.SetAttribute ("schedularAddress", AddressValue (schedulerIpAddress));
-  ApplicationContainer sourceapp = source0.Install (terminals.Get (0));
+  NodeContainer offloadSrc;
+  offloadSrc.Add(terminals.Get(0));
+  offloadSrc.Add(terminals.Get(5));
+  ApplicationContainer sourceapp = source0.Install (offloadSrc);
   sourceapp.Start (Seconds (10));
   sourceapp.Stop (Seconds (30));
 #endif
