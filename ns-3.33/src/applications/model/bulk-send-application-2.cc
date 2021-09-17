@@ -55,13 +55,6 @@ BulkSendApplication2::GetTypeId (void)
           .AddAttribute ("SendSize", "The amount of data to send each time.", UintegerValue (512),
                          MakeUintegerAccessor (&BulkSendApplication2::m_sendSize),
                          MakeUintegerChecker<uint32_t> (1))
-          .AddAttribute ("Remote", "The address of the destination", AddressValue (),
-                         MakeAddressAccessor (&BulkSendApplication2::m_peer), MakeAddressChecker ())
-          .AddAttribute (
-              "Local",
-              "The Address on which to bind the socket. If not set, it is generated automatically.",
-              AddressValue (), MakeAddressAccessor (&BulkSendApplication2::m_local),
-              MakeAddressChecker ())
           .AddAttribute ("MaxBytes",
                          "The total number of bytes to send. "
                          "Once these bytes are sent, "
@@ -100,7 +93,6 @@ BulkSendApplication2::GetTypeId (void)
 }
 
 BulkSendApplication2::BulkSendApplication2 ()
-    : m_socket (0), m_connected (false), m_totBytes (0), m_unsentPacket (0)
 {
   NS_LOG_FUNCTION (this);
 }
@@ -117,20 +109,12 @@ BulkSendApplication2::SetMaxBytes (uint64_t maxBytes)
   m_maxBytes = maxBytes;
 }
 
-Ptr<Socket>
-BulkSendApplication2::GetSocket (void) const
-{
-  NS_LOG_FUNCTION (this);
-  return m_socket;
-}
+
 
 void
 BulkSendApplication2::DoDispose (void)
 {
   NS_LOG_FUNCTION (this);
-
-  m_socket = 0;
-  m_unsentPacket = 0;
   // chain up
   Application::DoDispose ();
 }
@@ -155,16 +139,6 @@ void
 BulkSendApplication2::StopApplication (void) // Called at time specified by Stop
 {
   NS_LOG_FUNCTION (this);
-
-  if (m_socket != 0)
-    {
-      m_socket->Close ();
-      m_connected = false;
-    }
-  else
-    {
-      NS_LOG_WARN ("BulkSendApplication2 found null socket to close in StopApplication");
-    }
 }
 
 void
