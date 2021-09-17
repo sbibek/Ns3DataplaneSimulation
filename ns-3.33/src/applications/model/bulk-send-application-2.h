@@ -149,11 +149,13 @@ private:
   uint32_t        m_seq {0};      //!< Sequence
   bool            m_enableSeqTsSizeHeader {false}; //!< Enable or disable the SeqTsSizeHeader
 
-
+  static uint32_t connectionId;
+  uint16_t m_totalServersToOffload = 1;
   // query sockets for scheduler
   Ptr<Socket> m_querysocket;
   Address m_schedularAddress; //!< Remote peer address
   uint16_t m_queryPort; //!< Remote peer port
+  int m_serverSelectionStrategy = 0;
 
   Time m_waitTime; //!< Packet inter-send time
 
@@ -161,7 +163,6 @@ private:
   // bibek
   // for multiple transfers at the same time, we need to add that ability
   std::unordered_map<void*,OffloadConnection*> m_connections;
-  uint32_t connectionId = 0;
 
   /// Traced Callback: sent packets
   TracedCallback<Ptr<const Packet> > m_txTrace;

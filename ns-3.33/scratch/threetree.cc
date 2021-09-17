@@ -18,6 +18,11 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("THREETREE");
 
+// typedefs for making names more identifiable
+typedef BulkSendHelper2 GtcpOffloadHelper;
+typedef GtcpServerHelper GtcpOffloadServerHelper;
+
+
 #define __DUMP_IPS 0
 #define __ASCII_TRACE 1
 #define __PCAP_TRACE 0
@@ -42,6 +47,19 @@ uint64_t ROLL_STATS_PERIOD_MS = PROBE_SENDER_INTERVAL_SEC * 1000;
 std::string LINK_DATA_RATE = "10Mbps";
 std::string QUEUE_SIZE = "100p";
 int DELAY_MICROSEC = 5;
+
+
+/************* GTCP Offload server conf ********************/
+int GTCP_WAIT_TIME_TO_SIMULATE_PROCESSING_S = 5;
+uint GTCP_MAX_RESPONSE_BYTES_TO_SIMULATE_RESPONSE = 1024*1024;
+int GTCP_DATA_TRANSFER_PORT = 12345;
+// ---------------------------------------------------------
+
+/************* OFFLOAD Application conf ********************/
+int OF_SELECTION_STRATEGY_OPTIMAL = 0;
+int OF_SELECTION_STRATEGY_NEAR = 1;
+int OF_SELECTION_STRATEGY_RAND = 2;
+// --------------------------------------------------------
 
 CsmaHelper createCsmaHelper (std::string dataRate, std::string queueSize, int delayMicroSec);
 
@@ -267,40 +285,39 @@ main (int argc, char *argv[])
   /*############################ OFFLOAD MODULE ############################*/
 #define OFFLOAD_MOD
 #ifdef OFFLOAD_MOD
-  // data transfer application
-  int dataTransferPort = 12345;
-  int _idx = terminalips.GetN () - 1;
-  Address sinkAddress (InetSocketAddress (terminalips.GetAddress (_idx), dataTransferPort));
+  GtcpOffloadServerHelper gtcpserverHelper (GTCP_DATA_TRANSFER_PORT);
+  gtcpserverHelper.SetAttribute ("WaitPeriod", TimeValue (Seconds (GTCP_WAIT_TIME_TO_SIMULATE_PROCESSING_S)));
+  gtcpserverHelper.SetAttribute ("TotalResponseBytes", UintegerValue (GTCP_MAX_RESPONSE_BYTES_TO_SIMULATE_RESPONSE));
 
-  GtcpServerHelper gtcpserverHelper (dataTransferPort);
-  gtcpserverHelper.SetAttribute ("WaitPeriod", TimeValue (Seconds (5)));
-  gtcpserverHelper.SetAttribute ("TotalResponseBytes", UintegerValue (1024 * 1024));
+  ApplicationContainer gtcpOffloadApp = gtcpserverHelper.Install (terminals);
+  gtcpOffloadApp.Start (Seconds (1));
+  gtcpOffloadApp.Stop (Seconds (30));
 
-  PacketSinkHelper packetSinkHelper ("ns3::TcpSocketFactory",
-                                     InetSocketAddress (Ipv4Address::GetAny (), dataTransferPort));
+  // offload plans (which node to offload, how many servers to offload to, max bytes to offload per server, selection_mode, start_time, end_time)
+  // selection mode : 0 = OPTIMAL, 1 = NEAR, 2 = RANDOM
+  std::vector<std::tuple<int, int, uint64_t, int, int, int>> offloadPlans;
+  offloadPlans.push_back(std::make_tuple(0, 3, 1024*1024*2, OF_SELECTION_STRATEGY_OPTIMAL, 10, 30));
+  offloadPlans.push_back(std::make_tuple(5, 3, 1024*1024*2, OF_SELECTION_STRATEGY_OPTIMAL, 10, 34));
 
-  ApplicationContainer sinkapp = gtcpserverHelper.Install (terminals);
-  //packetSinkHelper.Install (terminals.Get (_idx));
-  sinkapp.Start (Seconds (1));
-  sinkapp.Stop (Seconds (30));
+  for(std::tuple<int, int, uint64_t, int, int, int> ofplan: offloadPlans) {
+    GtcpOffloadHelper offload;
+    offload.SetAttribute ("MaxBytes", UintegerValue (std::get<2>(ofplan)));
+    offload.SetAttribute ("schedularAddress", AddressValue (schedulerIpAddress));
+    offload.SetAttribute("totalServersToOffload", UintegerValue(std::get<1>(ofplan)));
+    offload.SetAttribute("serverSelectionStrategy", IntegerValue(std::get<3>(ofplan)));
 
-  BulkSendHelper2 source0;
-  // GtcpClientHelper source0(Address(terminalips.GetAddress(_idx)), dataTransferPort);
-  // source0.SetRemote(sinkAddress)
-  source0.SetAttribute ("MaxBytes", UintegerValue (1024 * 1024 * 2));
-  source0.SetAttribute ("schedularAddress", AddressValue (schedulerIpAddress));
-  NodeContainer offloadSrc;
-  offloadSrc.Add(terminals.Get(0));
-  offloadSrc.Add(terminals.Get(5));
-  ApplicationContainer sourceapp = source0.Install (offloadSrc);
-  sourceapp.Start (Seconds (10));
-  sourceapp.Stop (Seconds (30));
+    NodeContainer offloadSrc;
+    offloadSrc.Add(terminals.Get(std::get<0>(ofplan)));
+    ApplicationContainer offloadApp = offload.Install (offloadSrc);
+    offloadApp.Start (Seconds (std::get<4>(ofplan)));
+    offloadApp.Stop (Seconds (std::get<5>(ofplan)));
+  }
 #endif
 /*############################ END OF OFFLOAD MODULE ############################*/
 
 /*############################ BACKGROUND TRAFFIC ############################*/
 // we will schedule background data transfers from hosts to hosts
-// #define BACKGROUND_DATA_TRANSFERS
+#define BACKGROUND_DATA_TRANSFERS
 #ifdef BACKGROUND_DATA_TRANSFERS
   // we will install sink on all nodes
   int psinkPort = 9997;

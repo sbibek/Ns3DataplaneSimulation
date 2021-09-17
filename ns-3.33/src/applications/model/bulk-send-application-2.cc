@@ -27,6 +27,7 @@
 #include "ns3/socket-factory.h"
 #include "ns3/packet.h"
 #include "ns3/uinteger.h"
+#include "ns3/integer.h"
 #include "ns3/trace-source-accessor.h"
 #include "ns3/tcp-socket-factory.h"
 #include "ns3/udp-socket-factory.h"
@@ -43,6 +44,8 @@ namespace ns3 {
 NS_LOG_COMPONENT_DEFINE ("BulkSendApplication2");
 
 NS_OBJECT_ENSURE_REGISTERED (BulkSendApplication2);
+
+uint32_t BulkSendApplication2::connectionId = 0;
 
 TypeId
 BulkSendApplication2::GetTypeId (void)
@@ -87,6 +90,14 @@ BulkSendApplication2::GetTypeId (void)
                          UintegerValue (8080),
                          MakeUintegerAccessor (&BulkSendApplication2::m_queryPort),
                          MakeUintegerChecker<uint16_t> ())
+          .AddAttribute ("totalServersToOffload", "The destination port of the outbound packets",
+                         UintegerValue (1),
+                         MakeUintegerAccessor (&BulkSendApplication2::m_totalServersToOffload),
+                         MakeUintegerChecker<uint16_t> ())
+          .AddAttribute ("serverSelectionStrategy", "The destination port of the outbound packets",
+                         IntegerValue(0),
+                         MakeIntegerAccessor (&BulkSendApplication2::m_serverSelectionStrategy),
+                         MakeIntegerChecker<int> ())
 
       ;
   return tid;
@@ -409,10 +420,11 @@ BulkSendApplication2::QueryResponseHandler (Ptr<Socket> socket)
   if (results.size () > 0)
     {
       std::vector<int> nodes;
+      // offload to requested amount of servers
+      for(int i=0;i<m_totalServersToOffload;i++)
+        nodes.push_back(std::get<0> (results.at (i)));
 
-      nodes.push_back(std::get<0> (results.at (0)));
-      // nodes.push_back(std::get<0> (results.at (1)));
-      // nodes.push_back(std::get<0> (results.at (11)));
+      logger("debug").add("Total number of servers to offload", m_totalServersToOffload).log();
       // means we have results
       Simulator::Schedule (Seconds (0.0), &BulkSendApplication2::DataTransferSequence, this,
                           nodes );
@@ -481,7 +493,7 @@ BulkSendApplication2::InitTransferN (Address &address)
     }
   // now we can publish the socket
   OffloadConnection* conn =  new OffloadConnection ();
-  conn->connId = (++connectionId);
+  conn->connId = (++BulkSendApplication2::connectionId);
   m_connections[(void*)&(*currentSocket)] = conn;
 
   currentSocket->Connect (address);
