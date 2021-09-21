@@ -27,6 +27,9 @@ typedef GtcpServerHelper GtcpOffloadServerHelper;
 #define __ASCII_TRACE 1
 #define __PCAP_TRACE 0
 
+/*********** SIMULATION VARS ********************/
+int TOTAL_SIMULATION_TIME_S = 100;
+
 /********* topology configurations ***************/
 int AGGREGATION_SW_N = 10;
 int EDGE_PER_AGG_SW_N = 2;
@@ -263,7 +266,7 @@ main (int argc, char *argv[])
 
   ApplicationContainer schedulerApp = schedulerhelper.Install (terminals.Get (_schid));
   schedulerApp.Start (Seconds (0.0));
-  schedulerApp.Stop (Seconds (50.0));
+  schedulerApp.Stop (Seconds (TOTAL_SIMULATION_TIME_S));
 
   ProbeAppHelper probeapphelper (schedulerIpAddress, PROBE_PORT, PROBE_SENDER_MAX_PACKETS,
                                  PROBE_SENDER_INTERVAL_SEC);
@@ -277,7 +280,7 @@ main (int argc, char *argv[])
       // probeNodes
   );
   app.Start (Seconds (1));
-  app.Stop (Seconds (50));
+  app.Stop (Seconds (TOTAL_SIMULATION_TIME_S));
 #endif
   /*############################ END OF INSTALL SCHEDULER AND PROBE MODULE SECTION ############################*/
 
@@ -302,11 +305,14 @@ main (int argc, char *argv[])
 
   ApplicationContainer gtcpOffloadApp = gtcpserverHelper.Install (terminals);
   gtcpOffloadApp.Start (Seconds (1));
-  gtcpOffloadApp.Stop (Seconds (30));
+  gtcpOffloadApp.Stop (Seconds (TOTAL_SIMULATION_TIME_S));
 
   // selection mode : 0 = OPTIMAL, 1 = NEAR, 2 = RANDOM
   offloadPlans.push_back(std::make_tuple(0, 3, 1024*1024*2, OF_SELECTION_STRATEGY_RAND, 10, 30));
-  // offloadPlans.push_back(std::make_tuple(5, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 10, 34));
+  offloadPlans.push_back(std::make_tuple(5, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 10, 34));
+  offloadPlans.push_back(std::make_tuple(19, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 15, 34));
+  offloadPlans.push_back(std::make_tuple(38, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 10, 34));
+  offloadPlans.push_back(std::make_tuple(28, 5, 1024*1024*2, OF_SELECTION_STRATEGY_OPTIMAL, 5, 34));
 
   for(std::tuple<int, int, uint64_t, int, int, int> ofplan: offloadPlans) {
     GtcpOffloadHelper offload;
@@ -334,7 +340,7 @@ main (int argc, char *argv[])
                           InetSocketAddress (Ipv4Address::GetAny (), psinkPort));
   ApplicationContainer sinkapps = psink.Install (terminals);
   sinkapps.Start (Seconds (0));
-  sinkapps.Stop (Seconds (50));
+  sinkapps.Stop (Seconds (TOTAL_SIMULATION_TIME_S));
 
   //for example, the transfer between 10 and 20 host start at 0s and stop at 30s
   backgroundTransfersMapTerminal2Terminal.push_back (std::make_tuple (10, 20, 5, 30));
@@ -365,7 +371,7 @@ main (int argc, char *argv[])
 #endif
   /*############################ END OF TRACING ############################*/
 
-  Simulator::Stop (Seconds (50));
+  Simulator::Stop (Seconds (TOTAL_SIMULATION_TIME_S));
   Simulator::Run ();
   Simulator::Destroy ();
   NS_LOG_INFO ("Done.");

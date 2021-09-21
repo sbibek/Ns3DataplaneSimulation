@@ -173,7 +173,7 @@ MyLogger& MyLogger::add(std::string key, float val) {
 
 void MyLogger::log() {
   std::stringstream ss;
-  ss << "{\"context\":\"" << context << "\", \"node\":\"" << app.GetNode()->GetIdx()<<"\"";
+  ss << "{\"tym_s\":\"" << Simulator::Now().GetSeconds() <<"\", " "\"context\":\"" << context << "\", \"node\":\"" << app.GetNode()->GetIdx()<<"\"";
   for(std::tuple<std::string, std::string> t: msg) {
       ss << ", \"" << std::get<0>(t) << "\":\""<<std::get<1>(t) << "\"";
   }
