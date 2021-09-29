@@ -56,14 +56,16 @@ GtcpServer::GetTypeId (void)
                          UintegerValue (100), MakeUintegerAccessor (&GtcpServer::m_port),
                          MakeUintegerChecker<uint16_t> ())
           .AddAttribute ("TotalResponseBytes", "Bytes of data to send as response.",
-                         UintegerValue (512), MakeUintegerAccessor (&GtcpServer::m_totalResponseBytes),
+                         UintegerValue (512),
+                         MakeUintegerAccessor (&GtcpServer::m_totalResponseBytes),
                          MakeUintegerChecker<uint64_t> ())
-          .AddAttribute ("WaitPeriod", "Amount of time between send and results recv", TimeValue (Seconds (2.0)),
-                       MakeTimeAccessor (&GtcpServer::m_waitTime), MakeTimeChecker ());
+          .AddAttribute ("WaitPeriod", "Amount of time between send and results recv",
+                         TimeValue (Seconds (2.0)), MakeTimeAccessor (&GtcpServer::m_waitTime),
+                         MakeTimeChecker ());
   return tid;
 }
 
-GtcpServer::GtcpServer () 
+GtcpServer::GtcpServer ()
 {
   NS_LOG_FUNCTION (this);
 }
@@ -131,9 +133,9 @@ void
 GtcpServer::NewConnectionCreatedCallback (Ptr<Socket> socket, const Address &address)
 {
   // lets store this socket
-  GtcpConnection* conn = new GtcpConnection();
+  GtcpConnection *conn = new GtcpConnection ();
   conn->m_socket = socket;
-  m_connections[(void*)(&(*socket))] = conn;
+  m_connections[(void *) (&(*socket))] = conn;
 
   NS_LOG_INFO (this << " [GTCP] New connection received from "
                     << InetSocketAddress::ConvertFrom (address).GetIpv4 ());
@@ -160,102 +162,147 @@ GtcpServer::ErrorCloseCallback (Ptr<Socket> socket)
 void
 GtcpServer::ReceivedDataCallback (Ptr<Socket> socket)
 {
-  GtcpConnection* conn = m_connections[(void*)(&(*socket))];
+  GtcpConnection *conn = m_connections[(void *) (&(*socket))];
 
   // NS_LOG_INFO (this << " [GTCP] Received Data Callback");
   Ptr<Packet> packet;
   Address from;
 
-  while ((packet = socket->RecvFrom (from)) && conn->m_totalBulkTransferRcvdBytes < conn->m_totalBytesExpected )
+  while ((packet = socket->RecvFrom (from)) &&
+         conn->m_totalBulkTransferRcvdBytes < conn->m_totalBytesExpected)
     {
       if (packet->GetSize () == 0)
         break;
 
-      conn->m_totalBulkTransferRcvdBytes += packet->GetSize();
+      conn->m_totalBulkTransferRcvdBytes += packet->GetSize ();
 
       NS_LOG_INFO (this << " [GTCP] A packet of " << packet->GetSize () << " bytes"
                         << " received from " << InetSocketAddress::ConvertFrom (from).GetIpv4 ()
-                        << " port " << InetSocketAddress::ConvertFrom (from).GetPort () 
-                        << "Total so far = " << conn->m_totalBulkTransferRcvdBytes <<" bytes");
+                        << " port " << InetSocketAddress::ConvertFrom (from).GetPort ()
+                        << "Total so far = " << conn->m_totalBulkTransferRcvdBytes << " bytes");
 
-      if(!conn->m_metadataReceived) {
-       conn->m_receiveDataStarted = Simulator::Now();
-        // lets extract metadata
-        DataTransferHeader hdr;
-        packet->RemoveHeader(hdr);
-        conn->m_totalBytesExpected = hdr.GetTotalBytesFollowingThis();
-        conn->m_connId = hdr.GetConnectionId();
-        conn->m_metadataReceived = true;
-        NS_LOG_INFO(this << "Got metadata, total bytes expected = " <<  hdr.GetTotalBytesFollowingThis());
-        logger("debug").add("connection-id", conn->m_connId).add("gtcpserver expecting total bytes", conn->m_totalBytesExpected).log();
-      }
-
+      if (!conn->m_metadataReceived)
+        {
+          conn->m_receiveDataStarted = Simulator::Now ();
+          // lets extract metadata
+          DataTransferHeader hdr;
+          packet->RemoveHeader (hdr);
+          conn->m_totalBytesExpected = hdr.GetTotalBytesFollowingThis ();
+          conn->m_connId = hdr.GetConnectionId ();
+          conn->m_offloadSessionId = hdr.GetOffloadSessionId ();
+          conn->m_metadataReceived = true;
+          NS_LOG_INFO (this << "Got metadata, total bytes expected = "
+                            << hdr.GetTotalBytesFollowingThis ());
+          // logger ("debug")
+          //     .add ("offload-session-id", conn->m_offloadSessionId)
+          //     .add ("connection-id", conn->m_connId)
+          //     .add ("gtcpserver expecting total bytes", conn->m_totalBytesExpected)
+          //     .log ();
+        }
     }
 
-
-    if(!conn->m_responseCycle && conn->m_totalBulkTransferRcvdBytes >= conn->m_totalBytesExpected) {
+  if (!conn->m_responseCycle && conn->m_totalBulkTransferRcvdBytes >= conn->m_totalBytesExpected)
+    {
       conn->m_responseCycle = true;
-      Time elapsed = Simulator::Now() - conn->m_receiveDataStarted;
+      Time elapsed = Simulator::Now () - conn->m_receiveDataStarted;
       // NS_LOG_DEBUG("[GTCP] Took " << elapsed.GetMilliSeconds() << "ms to receive all the data");
-      logger("resut").add("connection-id", conn->m_connId).add("TRANSFERED_DATA_RECEIVED_TIME_MS", elapsed.GetMilliSeconds()).log();
+      // logger ("resut")
+      //     .add ("offload-session-id", conn->m_offloadSessionId)
+      //     .add ("connection-id", conn->m_connId)
+      //     .add ("TRANSFERED_DATA_RECEIVED_TIME_MS", elapsed.GetMilliSeconds ())
+      //     .log ();
+
+      logger ("metric")
+          .add ("offload-session-id", conn->m_offloadSessionId)
+          .add ("connection-id", conn->m_connId)
+          .add ("DATA_TRANSFER_COMPLETED_MS", Simulator::Now().GetMilliSeconds())
+          .log ();
+
       // now we simulate sending response
       // NS_LOG_DEBUG("[GTCP] Scheduling the response after " << m_waitTime.GetSeconds() << "s");
-      logger("result").add("connection-id", conn->m_connId).add("SIMULATED_PROCESSING_TIME_S", m_waitTime.GetSeconds()).log();
-       Simulator::Schedule (m_waitTime, &GtcpServer::ResponseCycle, this, socket);
+      logger ("metric")
+          .add ("offload-session-id", conn->m_offloadSessionId)
+          .add ("connection-id", conn->m_connId)
+          .add ("SIMULATED_PROCESSING_TIME_S", m_waitTime.GetSeconds ())
+          .log ();
+
+      logger ("metric")
+          .add ("offload-session-id", conn->m_offloadSessionId)
+          .add ("connection-id", conn->m_connId)
+          .add ("TOTAL_RESPONSE_BYTES", m_totalResponseBytes)
+          .log ();
+      Simulator::Schedule (m_waitTime, &GtcpServer::ResponseCycle, this, socket);
       // test(socket);
     }
 
   // socket->Close();
 }
 
+void
+GtcpServer::ResponseCycle (Ptr<Socket> s)
+{
+  GtcpConnection *conn = m_connections[(void *) (&(*s))];
+  if (conn->m_responseStarted == false)
+    {
+      conn->m_responseStarted = true;
+      conn->m_responseStartTime = Simulator::Now ();
+      logger ("metric")
+          .add ("offload-session-id", conn->m_offloadSessionId)
+          .add ("connection-id", conn->m_connId)
+          .add ("RESPONSE_DATA_TRANSFER_STARTED_MS", conn->m_responseStartTime.GetMilliSeconds())
+          .log ();
+    }
 
-void GtcpServer::ResponseCycle(Ptr<Socket> s) {
-      GtcpConnection* conn = m_connections[(void*)(&(*s))];
-      if(conn->m_responseStarted == false) {
-          conn->m_responseStarted = true;
-          conn->m_responseStartTime = Simulator::Now();
-      }
+  uint64_t toSend =
+      std::min ((uint64_t) 512, m_totalResponseBytes - conn->m_totalResponseBytesSent);
+  NS_LOG_INFO ("[GTCP] Response cycle Remaining=" << toSend << " bytes");
 
-      uint64_t toSend = std::min((uint64_t)512, m_totalResponseBytes-conn->m_totalResponseBytesSent);
-      NS_LOG_INFO("[GTCP] Response cycle Remaining=" << toSend << " bytes");
+  Ptr<Packet> load = Create<Packet> (toSend);
+  int actual = s->Send (load);
 
-      Ptr<Packet> load = Create<Packet>(toSend);
-      int actual = s->Send(load);
+  if (actual == -1)
+    {
+      // this is bad, lookslike no buffer, so schedule at later time
+      NS_LOG_INFO ("Looks like buffer is full, so rescheduling after 5ms");
+      Simulator::Schedule (MilliSeconds (5), &GtcpServer::ResponseCycle, this, s);
+      return;
+    }
 
-      if(actual == -1) {
-        // this is bad, lookslike no buffer, so schedule at later time
-        NS_LOG_INFO("Looks like buffer is full, so rescheduling after 5ms");
-        Simulator::Schedule (MilliSeconds(5), &GtcpServer::ResponseCycle, this, s);
-        return;
-      }
-
-       conn->m_totalResponseBytesSent += toSend;
-      if(conn->m_totalResponseBytesSent < m_totalResponseBytes) {
-        // means need to reschedule it
-        Simulator::Schedule (Seconds(0), &GtcpServer::ResponseCycle, this, s);
-      } else {
-        Time elapsed = Simulator::Now() - conn->m_responseStartTime;
-        // NS_LOG_DEBUG("[GTPC] Sending response took " << elapsed.GetMilliSeconds() << "ms" );
-        logger("result").add("connection-id", conn->m_connId).add("RESPONSE_SEND_TIME_MS", elapsed.GetMilliSeconds()).log();
-        // means the response is complete
-        s->Close();
-      }
+  conn->m_totalResponseBytesSent += toSend;
+  if (conn->m_totalResponseBytesSent < m_totalResponseBytes)
+    {
+      // means need to reschedule it
+      Simulator::Schedule (Seconds (0), &GtcpServer::ResponseCycle, this, s);
+    }
+  else
+    {
+      Time elapsed = Simulator::Now () - conn->m_responseStartTime;
+      // NS_LOG_DEBUG("[GTPC] Sending response took " << elapsed.GetMilliSeconds() << "ms" );
+      // logger ("result")
+      //     .add ("offload-session-id", conn->m_offloadSessionId)
+      //     .add ("connection-id", conn->m_connId)
+      //     .add ("RESPONSE_SEND_TIME_MS", elapsed.GetMilliSeconds ())
+      //     .log ();
+      // means the response is complete
+      s->Close ();
+    }
 }
 
-void GtcpServer::test(Ptr<Socket> s) {
-  NS_LOG_INFO("Sending Test Data");
+void
+GtcpServer::test (Ptr<Socket> s)
+{
+  NS_LOG_INFO ("Sending Test Data");
   ProbeHeader hdr;
-  hdr.SetCount(111);
-  Ptr<Packet> pkt = Create<Packet>(hdr.GetSerializedSize());
-  pkt->AddHeader(hdr);
-  s->Send(pkt);
+  hdr.SetCount (111);
+  Ptr<Packet> pkt = Create<Packet> (hdr.GetSerializedSize ());
+  pkt->AddHeader (hdr);
+  s->Send (pkt);
 }
 
 void
 GtcpServer::SendCallback (Ptr<Socket> socket, uint32_t availableBufferSize)
 {
   // NS_LOG_INFO (this << " [GTCP] Send Callback");
-  
 }
 
 } // Namespace ns3

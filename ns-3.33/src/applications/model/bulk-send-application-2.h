@@ -36,6 +36,8 @@ class Socket;
 
 typedef struct
 {
+  // there can be multiple connection per offload
+  // so we need offload id too for logging purpose
   uint32_t connId;
   Ptr<Socket> m_socket;
   bool m_isConnected = false;
@@ -153,7 +155,14 @@ private:
   uint32_t m_seq{0}; //!< Sequence
   bool m_enableSeqTsSizeHeader{false}; //!< Enable or disable the SeqTsSizeHeader
 
+  // offload session helps to group the specific offload where there can be more than one 
+  // offload targets/connections
+  static uint32_t offloadSessionId;
+  // each connection will be identified by connectionId
   static uint32_t connectionId;
+
+  // current instance will have its own offload session id
+  uint32_t m_offloadSessionIdForThis;
   uint16_t m_totalServersToOffload = 1;
   // query sockets for scheduler
   Ptr<Socket> m_querysocket;

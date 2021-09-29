@@ -47,6 +47,7 @@ NS_LOG_COMPONENT_DEFINE ("BulkSendApplication2");
 NS_OBJECT_ENSURE_REGISTERED (BulkSendApplication2);
 
 uint32_t BulkSendApplication2::connectionId = 0;
+uint32_t BulkSendApplication2::offloadSessionId = 0;
 
 TypeId
 BulkSendApplication2::GetTypeId (void)
@@ -96,7 +97,7 @@ BulkSendApplication2::GetTypeId (void)
                          MakeUintegerAccessor (&BulkSendApplication2::m_totalServersToOffload),
                          MakeUintegerChecker<uint16_t> ())
           .AddAttribute ("serverSelectionStrategy", "The destination port of the outbound packets",
-                         IntegerValue(0),
+                         IntegerValue (0),
                          MakeIntegerAccessor (&BulkSendApplication2::m_serverSelectionStrategy),
                          MakeIntegerChecker<int> ())
 
@@ -121,8 +122,6 @@ BulkSendApplication2::SetMaxBytes (uint64_t maxBytes)
   m_maxBytes = maxBytes;
 }
 
-
-
 void
 BulkSendApplication2::DoDispose (void)
 {
@@ -142,6 +141,9 @@ BulkSendApplication2::StartApplication (void) // Called at time specified by Sta
       InetSocketAddress (Ipv4Address::ConvertFrom (m_schedularAddress), m_queryPort));
   m_querysocket->SetRecvCallback (MakeCallback (&BulkSendApplication2::QueryResponseHandler, this));
 
+  // assign offload session id for current offload session
+  m_offloadSessionIdForThis = (BulkSendApplication2::offloadSessionId++);
+
   // Actual Logic
   // As soon the application starts, we need to send the query
   Simulator::Schedule (Seconds (0.0), &BulkSendApplication2::QuerySequence, this);
@@ -154,7 +156,7 @@ BulkSendApplication2::StopApplication (void) // Called at time specified by Stop
 }
 
 void
-BulkSendApplication2::SendHeader (const Address &from, const Address &to, OffloadConnection* conn)
+BulkSendApplication2::SendHeader (const Address &from, const Address &to, OffloadConnection *conn)
 {
   NS_LOG_FUNCTION (this);
   // NS_LOG_DEBUG("[BulkSend2] Sending bytes information, total following bytes = " << m_maxBytes);
@@ -162,11 +164,17 @@ BulkSendApplication2::SendHeader (const Address &from, const Address &to, Offloa
   //     "DEBUG NodeId=" << m_node->GetIdx ()
   //                     << " Sending total bytes of data to expect to the receiver which is "
   //                     << m_maxBytes << "bytes");
-  logger ("debug").add("connection-id", conn->connId).add ("TOTAL_BYTES_TO_SEND", m_maxBytes).log ();
+  logger ("metric")
+      .add ("offload-session-id", m_offloadSessionIdForThis)
+      .add ("connection-id", conn->connId)
+      .add ("TOTAL_BYTES_TO_SEND", m_maxBytes)
+      .log ();
+
   // first thing to do here is send a packet with details of bytes we will be sending
   DataTransferHeader dth;
   dth.SetTotalBytesFollowingThis (m_maxBytes);
-  dth.SetConnectionId(conn->connId);
+  dth.SetConnectionId (conn->connId);
+  dth.SetOffloadSessionId (m_offloadSessionIdForThis);
 
   // // lets send the packet as metadata
   Ptr<Packet> metadata = Create<Packet> (dth.GetSerializedSize ());
@@ -178,7 +186,8 @@ BulkSendApplication2::SendHeader (const Address &from, const Address &to, Offloa
 // Private helpers
 
 void
-BulkSendApplication2::TestSendData (const Address &from, const Address &to, Ptr<Socket> socket, OffloadConnection* conn)
+BulkSendApplication2::TestSendData (const Address &from, const Address &to, Ptr<Socket> socket,
+                                    OffloadConnection *conn)
 {
 
   NS_LOG_FUNCTION (this);
@@ -186,6 +195,12 @@ BulkSendApplication2::TestSendData (const Address &from, const Address &to, Ptr<
   if (!conn->m_sentMetadata)
     {
       SendHeader (from, to, conn);
+      logger("metric")
+        .add ("offload-session-id", m_offloadSessionIdForThis)
+        .add ("connection-id", conn->connId)
+        .add("DATA_TRANSFER_STARTED_MS", Simulator::Now().GetMilliSeconds())
+        .log();
+
       conn->m_transferStartedTime = Simulator::Now ();
     }
 
@@ -271,20 +286,27 @@ BulkSendApplication2::TestSendData (const Address &from, const Address &to, Ptr<
       // NS_LOG_DEBUG ("RESULT NodeId=" << m_node->GetIdx ()
       //                                << " Time taken to complete the transfer = "
       //                                << elapsed.GetMilliSeconds () << " ms");
-      logger ("result").add("connection-id", conn->connId).add ("TRANSFER_TIME_MS", elapsed.GetMilliSeconds ()).log ();
+      // logger ("result")
+      //     .add ("offload-session-id", m_offloadSessionIdForThis)
+      //     .add ("connection-id", conn->connId)
+      //     .add ("TRANSFER_TIME_MS", elapsed.GetMilliSeconds ())
+      //     .log ();
     }
 }
 
 void
 BulkSendApplication2::ConnectionSucceeded (Ptr<Socket> socket)
 {
-  OffloadConnection* conn = m_connections[(void*)&(*socket)];
-  if(conn == NULL) {
-    logger("error").add("status", "null pointer on offload connections").log();
-  } else {
-    // this means the connection is a success
-    conn->m_isConnected = true;
-  }
+  OffloadConnection *conn = m_connections[(void *) &(*socket)];
+  if (conn == NULL)
+    {
+      logger ("error").add ("status", "null pointer on offload connections").log ();
+    }
+  else
+    {
+      // this means the connection is a success
+      conn->m_isConnected = true;
+    }
 }
 
 void
@@ -299,10 +321,10 @@ BulkSendApplication2::DataSend (Ptr<Socket> socket, uint32_t)
 {
   NS_LOG_FUNCTION (this);
   // get the appropriate connection
-  OffloadConnection* conn = m_connections[(void*)&(*socket)];
+  OffloadConnection *conn = m_connections[(void *) &(*socket)];
   if (conn && conn->m_isConnected)
     { // Only send new data if the connection has completed
-      conn->updateSocket(socket);
+      conn->updateSocket (socket);
       Address from, to;
       socket->GetSockName (from);
       socket->GetPeerName (to);
@@ -313,13 +335,16 @@ BulkSendApplication2::DataSend (Ptr<Socket> socket, uint32_t)
 void
 BulkSendApplication2::ReceivedDataCallback (Ptr<Socket> socket)
 {
-  OffloadConnection* conn = m_connections[(void*)&(*socket)];
-  if(conn == NULL) {
-    logger("error").add("status", "cannot find appropriate offload connection when receiving data").log();
-    return;
-  }
+  OffloadConnection *conn = m_connections[(void *) &(*socket)];
+  if (conn == NULL)
+    {
+      logger ("error")
+          .add ("status", "cannot find appropriate offload connection when receiving data")
+          .log ();
+      return;
+    }
 
-  conn->updateSocket(socket);
+  conn->updateSocket (socket);
   if (conn->m_transferCompleted && !conn->m_responseStarted)
     {
       conn->m_responseStarted = true;
@@ -344,12 +369,14 @@ void
 BulkSendApplication2::NormalCloseCallback (Ptr<Socket> socket)
 {
 
-  OffloadConnection* conn = m_connections[(void*)&(*socket)];
-  if(conn == NULL) {
-    logger("error").add("status", "cannot find appropriate offload connection when receiving data").log();
-    return;
-  }
-
+  OffloadConnection *conn = m_connections[(void *) &(*socket)];
+  if (conn == NULL)
+    {
+      logger ("error")
+          .add ("status", "cannot find appropriate offload connection when receiving data")
+          .log ();
+      return;
+    }
 
   if (conn->m_responseStarted)
     {
@@ -357,7 +384,16 @@ BulkSendApplication2::NormalCloseCallback (Ptr<Socket> socket)
       // NS_LOG_DEBUG("[BulkSendApp] Took " << elapsed.GetMilliSeconds() << "ms to receive the response");
       // NS_LOG_DEBUG ("RESULT NodeId=" << m_node->GetIdx () << " Time taken to receive the data = "
       //                                << elapsed.GetMilliSeconds () << " ms");
-      logger ("result").add("connection-id", conn->connId).add ("RESPONSE_RECEIVE_TIME_MS", elapsed.GetMilliSeconds ()).log ();
+      // logger ("result")
+      //     .add ("offload-session-id", m_offloadSessionIdForThis)
+      //     .add ("connection-id", conn->connId)
+      //     .add ("RESPONSE_RECEIVE_TIME_MS", elapsed.GetMilliSeconds ())
+      //     .log ();
+      logger ("metric")
+          .add ("offload-session-id", m_offloadSessionIdForThis)
+          .add ("connection-id", conn->connId)
+          .add ("RESPONSE_DATA_TRANSFER_COMPLETED_MS", Simulator::Now().GetMilliSeconds())
+          .log ();
     }
   NS_LOG_INFO (this << " [BulkSendApp] Connection Closed Normally");
 }
@@ -373,7 +409,7 @@ BulkSendApplication2::SendQuery (void)
 {
   QueryHeader header;
   header.SetNodeId (m_node->GetIdx ());
-  header.SetSelectionStrategy((uint16_t)m_serverSelectionStrategy);
+  header.SetSelectionStrategy ((uint16_t) m_serverSelectionStrategy);
 
   Ptr<Packet> packet = Create<Packet> (header.GetSerializedSize ());
   packet->AddHeader (header);
@@ -382,12 +418,24 @@ BulkSendApplication2::SendQuery (void)
   // NS_LOG_DEBUG ("DEBUG NodeId=" << m_node->GetIdx ()
   //                               << " Sent node ranking query to the schedular \n");
   // NS_LOG_INFO("[Tx Query] swid=" << header.GetNodeId());
-  logger ("debug").add ("Ranking query sent to the scheduler, waiting for the response", "").log ();
+  //   logger ("debug")
+  // .add("offload-session-id", m_offloadSessionIdForThis)
+  //   .add ("Ranking query sent to the scheduler, waiting for the response", "").log ();
+
+  logger ("metric")
+      .add ("offload-session-id", m_offloadSessionIdForThis)
+      .add ("QUERY_INITIATED_MS", Simulator::Now ().GetMilliSeconds ())
+      .log();
 }
 
 void
 BulkSendApplication2::QueryResponseHandler (Ptr<Socket> socket)
 {
+  logger ("metric")
+      .add ("offload-session-id", m_offloadSessionIdForThis)
+      .add ("QUERY_RESPONSE_RCVD_MS", Simulator::Now ().GetMilliSeconds ())
+      .log();
+
   Ptr<Packet> packet;
   Address from;
   Address localAddress;
@@ -405,7 +453,9 @@ BulkSendApplication2::QueryResponseHandler (Ptr<Socket> socket)
           // std::cout << Simulator::Now () << " Response received " << response.GetCount ()
           //           << std::endl
           //           << std::flush;
-          logger ("debug").add ("Total result count in response", response.GetCount ()).log ();
+          // logger ("debug")
+          // .add("offload-session-id", m_offloadSessionIdForThis)
+          // .add ("Total result count in response", response.GetCount ()).log ();
           QueryValue value;
           for (int i = 0; i < response.GetCount (); i++)
             {
@@ -413,7 +463,7 @@ BulkSendApplication2::QueryResponseHandler (Ptr<Socket> socket)
               // NS_LOG_DEBUG ("DEBUG NodeId=" << m_node->GetIdx ()
               //                               << " { nodeid=" << value.GetNodeId ()
               //                               << " value=" << value.GetValue () << "}");
-              logger ("debug").add (std::to_string (value.GetNodeId ()), value.GetValue ()).log ();
+              // logger ("debug").add (std::to_string (value.GetNodeId ()), value.GetValue ()).log ();
               results.push_back (std::make_tuple (value.GetNodeId (), value.GetValue ()));
             }
         }
@@ -423,36 +473,47 @@ BulkSendApplication2::QueryResponseHandler (Ptr<Socket> socket)
     {
       std::vector<int> nodes;
       // offload to requested amount of servers
-      MyLogger _log = logger("debug").add("selection strategy",(m_serverSelectionStrategy == 0 ? "Optimal": (m_serverSelectionStrategy == 1 ? "Near" : "Random")));
+      MyLogger _log = logger ("debug")
+                          .add ("offload-session-id", m_offloadSessionIdForThis)
+                          .add ("selection strategy",
+                                (m_serverSelectionStrategy == 0
+                                     ? "Optimal"
+                                     : (m_serverSelectionStrategy == 1 ? "Near" : "Random")));
       if (m_serverSelectionStrategy == OF_SELECTION_STRATEGY_OPTIMAL ||
           m_serverSelectionStrategy == OF_SELECTION_STRATEGY_NEAR)
         {
-          for (int i = 0; i < m_totalServersToOffload; i++){
-            nodes.push_back (std::get<0> (results.at (i)));
-            _log.add("node", i );
-          }
+          for (int i = 0; i < m_totalServersToOffload; i++)
+            {
+              nodes.push_back (std::get<0> (results.at (i)));
+              _log.add ("node", i);
+            }
         }
       else
         {
           // means we are doing random selection
-          std::map<int, int*> selection;
-          while(nodes.size() < m_totalServersToOffload) {
-            int g = std::experimental::randint(0, (int)(results.size()-1));
-            if(selection[g] == NULL)  {
-              selection[g] = new int;
-              _log.add("node", g );
-              nodes.push_back(g);
+          std::map<int, int *> selection;
+          while (nodes.size () < m_totalServersToOffload)
+            {
+              int g = std::experimental::randint (0, (int) (results.size () - 1));
+              if (selection[g] == NULL)
+                {
+                  selection[g] = new int;
+                  _log.add ("node", g);
+                  nodes.push_back (g);
+                }
             }
-          }
         }
 
-        // log the selection
+      // log the selection
 
-      logger("debug").add("Total number of servers to offload", m_totalServersToOffload).log();
-      _log.log();
+      logger ("debug")
+          .add ("offload-session-id", m_offloadSessionIdForThis)
+          .add ("Total number of servers to offload", m_totalServersToOffload)
+          .log ();
+
+      // _log.log ();
       // means we have results
-      Simulator::Schedule (Seconds (0.0), &BulkSendApplication2::DataTransferSequence, this,
-                          nodes );
+      Simulator::Schedule (Seconds (0.0), &BulkSendApplication2::DataTransferSequence, this, nodes);
     }
 }
 
@@ -471,23 +532,29 @@ BulkSendApplication2::DataTransferSequence (std::vector<int> nodes)
     {
       NS_LOG_DEBUG ("DEBUG NodeId=" << m_node->GetIdx () << " Interfaces not set on the Node");
     }
-//  ns3::Address address = ns3::Address(ip->GetAddress(nodeId));
-for(int node: nodes){
+  //  ns3::Address address = ns3::Address(ip->GetAddress(nodeId));
+  for (int node : nodes)
+    {
 #if 1
-  std::stringstream peerAddressStringStream, p2;
-  peerAddressStringStream << Ipv4Address::ConvertFrom (ip->GetAddress (node));
-  //  std::cout << " " << nodeId << " = " << peerAddressStringStream.str () << std::endl;
+      std::stringstream peerAddressStringStream, p2;
+      peerAddressStringStream << Ipv4Address::ConvertFrom (ip->GetAddress (node));
+      //  std::cout << " " << nodeId << " = " << peerAddressStringStream.str () << std::endl;
 #endif
 
-  // assign this to the peer that we need to connect to
-  //  m_peer = ns3::Address(ip->GetAddress(nodeId));
-  Address m_peer_address = (InetSocketAddress (ip->GetAddress (node), 12345));
-  // and then initiate the transfer sequence
-  // NS_LOG_DEBUG ("DEBUG NodeId=" << m_node->GetIdx () << " Initiating transfer to Node(" << nodeId
-  // << ") IP=" << peerAddressStringStream.str ());
-  logger ("debug").add ("Initiating data tranfer to ", peerAddressStringStream.str ()).log ();
-  Simulator::Schedule (Seconds (0.0), &BulkSendApplication2::InitTransferN, this, m_peer_address);
-}
+      // assign this to the peer that we need to connect to
+      //  m_peer = ns3::Address(ip->GetAddress(nodeId));
+      Address m_peer_address = (InetSocketAddress (ip->GetAddress (node), 12345));
+      // and then initiate the transfer sequence
+      // NS_LOG_DEBUG ("DEBUG NodeId=" << m_node->GetIdx () << " Initiating transfer to Node(" << nodeId
+      // << ") IP=" << peerAddressStringStream.str ());
+      // logger ("debug")
+      //     .add ("offload-session-id", m_offloadSessionIdForThis)
+      //     .add ("Initiating data tranfer to ", peerAddressStringStream.str ())
+      //     .log ();
+
+      Simulator::Schedule (Seconds (0.0), &BulkSendApplication2::InitTransferN, this,
+                           m_peer_address);
+    }
 }
 
 void
@@ -517,9 +584,9 @@ BulkSendApplication2::InitTransferN (Address &address)
       NS_FATAL_ERROR ("Failed to bind socket");
     }
   // now we can publish the socket
-  OffloadConnection* conn =  new OffloadConnection ();
+  OffloadConnection *conn = new OffloadConnection ();
   conn->connId = (++BulkSendApplication2::connectionId);
-  m_connections[(void*)&(*currentSocket)] = conn;
+  m_connections[(void *) &(*currentSocket)] = conn;
 
   currentSocket->Connect (address);
   // m_socket->ShutdownRecv ();

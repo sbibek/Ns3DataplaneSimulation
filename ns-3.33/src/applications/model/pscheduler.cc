@@ -240,7 +240,7 @@ void
 PScheduler::HandleQuery (QueryHeader &header, Address &from, Ptr<Socket> socket)
 {
   // NS_LOG_DEBUG("[Rx Query] swid=" << header.GetNodeId());
-  logger("debug").add("app", "scheduler").add("received query from", header.GetNodeId()).add("selection strategy", header.GetSelectionStrategy()).log();
+  // logger("debug").add("app", "scheduler").add("received query from", header.GetNodeId()).add("selection strategy", header.GetSelectionStrategy()).log();
 
   QueryResponse response;
   Ptr<Packet> packet = Create<Packet>(response.GetSerializedSize());

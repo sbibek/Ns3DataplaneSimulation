@@ -45,9 +45,13 @@ public:
   void SetConnectionId(uint64_t);
   uint64_t GetConnectionId(void) const;
 
+  void SetOffloadSessionId(uint32_t);
+  uint32_t GetOffloadSessionId(void) const;
+
 private:
   uint64_t m_totalBytesFollowingThis;
   uint64_t m_connectionId;
+  uint32_t m_offloadSessionId;
 };
 
 } // namespace ns3

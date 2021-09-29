@@ -9,10 +9,11 @@
 #include "ns3/internet-module.h"
 #include "ns3/flow-monitor-module.h"
 #include "ns3/gtcp-helper.h"
-
+#include "rapidjson/document.h"
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
+
 
 using namespace ns3;
 
@@ -64,7 +65,7 @@ int OF_SELECTION_STRATEGY_NEAR = 1;
 int OF_SELECTION_STRATEGY_RAND = 2;
 
 
-// offload plans (which node to offload, how many servers to offload to, max bytes to offload per server, selection_mode, start_time, end_time)
+// offload plans (which node will offload, how many servers to offload to, max bytes to offload per server, selection_mode, start_time, end_time)
 std::vector<std::tuple<int, int, uint64_t, int, int, int>> offloadPlans;
 
 // --------------------------------------------------------
@@ -93,6 +94,10 @@ main (int argc, char *argv[])
   //   LogComponentEnable ("GtcpClient", LOG_LEVEL_INFO);
   //   LogComponentEnable ("PScheduler", LOG_LEVEL_DEBUG);
   // LogComponentEnable ("BulkSendApplication", LOG_LEVEL_INFO);
+
+    //   const char* json = "{\"project\":\"rapidjson\",\"stars\":10}";
+    // rapidjson::Document d;
+    // d.Parse(json);
 
   /*############################ TOPOLOGY SECTION ############################*/
 
@@ -308,9 +313,9 @@ main (int argc, char *argv[])
   gtcpOffloadApp.Stop (Seconds (TOTAL_SIMULATION_TIME_S));
 
   // selection mode : 0 = OPTIMAL, 1 = NEAR, 2 = RANDOM
-  offloadPlans.push_back(std::make_tuple(0, 3, 1024*1024*2, OF_SELECTION_STRATEGY_RAND, 10, 30));
+  offloadPlans.push_back(std::make_tuple(0, 1, 1024*1024*2, OF_SELECTION_STRATEGY_RAND, 10, 30));
   offloadPlans.push_back(std::make_tuple(5, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 10, 34));
-  offloadPlans.push_back(std::make_tuple(19, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 15, 34));
+  offloadPlans.push_back(std::make_tuple(39, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 15, 34));
   offloadPlans.push_back(std::make_tuple(38, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 10, 34));
   offloadPlans.push_back(std::make_tuple(28, 5, 1024*1024*2, OF_SELECTION_STRATEGY_OPTIMAL, 5, 34));
 

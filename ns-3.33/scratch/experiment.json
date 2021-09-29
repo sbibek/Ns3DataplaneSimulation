@@ -1,0 +1,32 @@
+[
+    {
+        "global": {
+            "link_data_rate_mbps": 10,
+            "link_delay_microsec": 5,
+            "sw_egress_queue_size_packets": 200
+        },
+
+        "probing":{ "period_ms": 100 },
+
+        "background_traffcic": {
+            "max_transfer_bytes": 1987238623,
+            "transfers": [
+                { "from": 10, "to": 12, "start_s": 13, "end_s": 20 },
+                { "from": 19, "to": 7, "start_s": 5, "end_s": 15 }
+            ]
+        },
+
+        "offload": {
+            "simulate_processing_time_s": 5,
+            "response_size_bytes": 897236,
+            "offloads": [
+                { "node": 0, "no_of_servers_to_offload_to": 3, "max_request_bytes": 1092109, "selection_mode": 1, "start_s": 4, "end_s": 18 },
+                { "node": 5, "no_of_servers_to_offload_to": 2, "max_request_bytes": 2344454, "selection_mode": 0, "start_s": 3, "end_s": 18 }
+            ]
+        },
+
+        "simulation": {
+            "total_simulation_time_s": 100
+        }
+    }
+]
