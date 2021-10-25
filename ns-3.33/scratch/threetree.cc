@@ -49,7 +49,9 @@ uint64_t ROLL_STATS_PERIOD_MS = PROBE_SENDER_INTERVAL_SEC * 1000;
 
 // CSMA links configurations
 std::string LINK_DATA_RATE = "10Mbps";
-std::string QUEUE_SIZE = "100p";
+std::string CORE_LINK_DATA_RATE = "50Mbps";
+std::string AGG_LINK_DATA_RATE = "20Mbps";
+std::string QUEUE_SIZE = "1000p";
 int DELAY_MICROSEC = 5;
 
 
@@ -86,14 +88,20 @@ CsmaHelper createCsmaHelper (std::string dataRate, std::string queueSize, int de
  * 
  * */
 
+/* temp fn(s) */
+void packetsInQueueTrace (std::string context, uint32_t oldValue, uint32_t newValue);
+
 int
 main (int argc, char *argv[])
 {
+  CommandLine cmd;
+  cmd.Parse(argc, argv);
   //   LogComponentEnable ("GtcpServer", LOG_LEVEL_DEBUG);
   //   LogComponentEnable ("BulkSendApplication2", LOG_LEVEL_DEBUG);
   //   LogComponentEnable ("GtcpClient", LOG_LEVEL_INFO);
   //   LogComponentEnable ("PScheduler", LOG_LEVEL_DEBUG);
   // LogComponentEnable ("BulkSendApplication", LOG_LEVEL_INFO);
+  // LogComponentEnable("PacketSink", LOG_LEVEL_INFO);
 
     //   const char* json = "{\"project\":\"rapidjson\",\"stars\":10}";
     // rapidjson::Document d;
@@ -102,6 +110,8 @@ main (int argc, char *argv[])
   /*############################ TOPOLOGY SECTION ############################*/
 
   CsmaHelper generalCsmaHelper = createCsmaHelper (LINK_DATA_RATE, QUEUE_SIZE, DELAY_MICROSEC);
+  CsmaHelper coreCsmaHelper = createCsmaHelper(CORE_LINK_DATA_RATE, QUEUE_SIZE, DELAY_MICROSEC);
+  CsmaHelper aggCsmaHelper = createCsmaHelper(AGG_LINK_DATA_RATE, QUEUE_SIZE, DELAY_MICROSEC);
   // -----------------------------------------------------------------------------------------
 
   /**
@@ -132,7 +142,7 @@ main (int argc, char *argv[])
   // link core with aggregation sws
   for (int i = 0; i < AGGREGATION_SW_N; i++)
     {
-      NetDeviceContainer link = generalCsmaHelper.Install (
+      NetDeviceContainer link = coreCsmaHelper.Install (
           NodeContainer (dataplaneCoreSw.Get (0), dataplaneAggSw.Get (i)));
       coreNetDevices.Add (link.Get (0));
       aggregateNetDevices[i].Add (link.Get (1));
@@ -144,7 +154,7 @@ main (int argc, char *argv[])
     {
       for (int j = 0; j < EDGE_PER_AGG_SW_N; j++)
         {
-          NetDeviceContainer link = generalCsmaHelper.Install (
+          NetDeviceContainer link = aggCsmaHelper.Install (
               NodeContainer (dataplaneAggSw.Get (i), dataplaneEdgeSw.Get (edge_idx)));
 
           aggregateNetDevices[i].Add (link.Get (0));
@@ -313,11 +323,11 @@ main (int argc, char *argv[])
   gtcpOffloadApp.Stop (Seconds (TOTAL_SIMULATION_TIME_S));
 
   // selection mode : 0 = OPTIMAL, 1 = NEAR, 2 = RANDOM
-  offloadPlans.push_back(std::make_tuple(0, 1, 1024*1024*2, OF_SELECTION_STRATEGY_RAND, 10, 30));
-  offloadPlans.push_back(std::make_tuple(5, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 10, 34));
-  offloadPlans.push_back(std::make_tuple(39, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 15, 34));
-  offloadPlans.push_back(std::make_tuple(38, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 10, 34));
-  offloadPlans.push_back(std::make_tuple(28, 5, 1024*1024*2, OF_SELECTION_STRATEGY_OPTIMAL, 5, 34));
+  offloadPlans.push_back(std::make_tuple(0, 1, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 21, 50));
+  // offloadPlans.push_back(std::make_tuple(5, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 10, 34));
+  // offloadPlans.push_back(std::make_tuple(39, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 15, 34));
+  // offloadPlans.push_back(std::make_tuple(38, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 10, 34));
+  // offloadPlans.push_back(std::make_tuple(28, 5, 1024*1024*2, OF_SELECTION_STRATEGY_OPTIMAL, 5, 34));
 
   for(std::tuple<int, int, uint64_t, int, int, int> ofplan: offloadPlans) {
     GtcpOffloadHelper offload;
@@ -348,7 +358,11 @@ main (int argc, char *argv[])
   sinkapps.Stop (Seconds (TOTAL_SIMULATION_TIME_S));
 
   //for example, the transfer between 10 and 20 host start at 0s and stop at 30s
-  backgroundTransfersMapTerminal2Terminal.push_back (std::make_tuple (10, 20, 5, 30));
+  // backgroundTransfersMapTerminal2Terminal.push_back (std::make_tuple (0, 1, 20, 30));
+  // backgroundTransfersMapTerminal2Terminal.push_back (std::make_tuple (4, 1, 15, 30));
+  for(int i=0;i<3;i+=2) {
+    backgroundTransfersMapTerminal2Terminal.push_back (std::make_tuple (i, i+1, 15, 30));
+  }
 
   for (std::tuple<int, int, int, int> h2h : backgroundTransfersMapTerminal2Terminal)
     {
@@ -356,7 +370,7 @@ main (int argc, char *argv[])
       BulkSendHelper psrc (
           "ns3::TcpSocketFactory",
           InetSocketAddress (terminalips.GetAddress (std::get<1> (h2h)), psinkPort));
-      psrc.SetAttribute ("MaxBytes", UintegerValue (1024 * 1024 * 2));
+      psrc.SetAttribute ("MaxBytes", UintegerValue (0));
       ApplicationContainer psrcapp = psrc.Install (terminals.Get (std::get<0> (h2h)));
       psrcapp.Start (Seconds (std::get<2> (h2h)));
       psrcapp.Stop (Seconds (std::get<3> (h2h)));
@@ -364,6 +378,11 @@ main (int argc, char *argv[])
 
 #endif
 /*############################ END OF BACKGROUND TRAFFIC ############################*/
+
+//#define QUEUE_MONITOR
+#ifdef QUEUE_MONITOR
+Config::Connect("/NodeList/*/DeviceList/*/$ns3::CsmaNetDevice/TxQueue/PacketsInQueue", MakeCallback(&packetsInQueueTrace));
+#endif
 
 /*############################ TRACING ############################*/
 #if __ASCII_TRACE == 1
@@ -380,7 +399,7 @@ main (int argc, char *argv[])
   Simulator::Run ();
   Simulator::Destroy ();
   NS_LOG_INFO ("Done.");
-  //  Ptr<PacketSink> sink1 = DynamicCast<PacketSink> (sinkapps.Get (20));
+  //  Ptr<PacketSink> sink1 = DynamicCast<PacketSink> (sinkapps.Get (1));
   // std::cout << "Total Bytes Received: " << sink1->GetTotalRx () << std::endl;
 }
 
@@ -392,4 +411,9 @@ createCsmaHelper (std::string dataRate, std::string queueSize, int delayMicroSec
   csma.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (delayMicroSec)));
   csma.SetQueue ("ns3::DropTailQueue<Packet>", "MaxSize", QueueSizeValue (QueueSize (queueSize)));
   return csma;
+}
+
+void packetsInQueueTrace (std::string context, uint32_t oldValue, uint32_t newValue)
+{
+  NS_LOG_UNCOND("QUEUE " << Simulator::Now().GetMilliSeconds() <<" " << context << " " << oldValue <<" " << newValue);
 }

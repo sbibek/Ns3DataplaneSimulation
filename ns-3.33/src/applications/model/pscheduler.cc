@@ -211,6 +211,15 @@ PScheduler::HandleProbeData (ProbeHeader2 &header, std::vector<ProbePayload2> &p
   //   {
   //     // std::cout << "(p) " << p.GetPortId() << " = (q) " << p.GetMaxQueueDepth() << std::endl;
   //   }
+//#define SHOW_OUT
+#ifdef SHOW_OUT
+    int swid = header.GetSwid();
+    for(auto p: payload) {
+      // just for test purposes, we just log the specific switch port occupancy
+      NS_LOG_UNCOND("PROBE_STAT " << Simulator::Now().GetMilliSeconds() << " "  << swid << " " << p.GetPortId() << " " << p.GetMaxQueueDepth() << std::endl);
+    }
+#endif
+
 }
 
 void

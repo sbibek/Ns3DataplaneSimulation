@@ -16,6 +16,7 @@ class Experiment:
         script = ['./waf', '--run', 'scratch/threetree.cc']
         logfname = "ns3-log-{}-{}".format(self.__generateRandomString(),
                                           datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+        print("filename = {}".format(logfname))
         logf = open("{}.log".format(logfname), "wb", 0)
         result = subprocess.run(script, stderr=logf)
         logf.close()

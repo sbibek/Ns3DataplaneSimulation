@@ -3,6 +3,7 @@
 #include "ns3/simulator.h"
 #include "ns3/ipv4-header.h"
 #include "ns3/udp-header.h"
+#include "ns3/tcp-header.h"
 #include "ns3/query-header.h"
 #include "ns3/probe-header2.h"
 #include "ns3/probe-payload2.h"
@@ -205,6 +206,10 @@ SwitchNode::process (Ptr<NetDevice> incomingPort, Ptr<NetDevice> outgoingPort, P
               // << " UDP Port: " << udph.GetDestinationPort () << std::endl;
               // std:: cout << "PROBE packet @switch=" << swid<< std::endl;
               onProbeReceived (packet, swid, outPortId, st, current_ts);
+
+              // if(swid == 12) {
+              //   NS_LOG_UNCOND("PROBETRACE " << incomingPort->getGenericId() << "-"<< swid <<"-" << outgoingPort->getGenericId() << std::endl);
+              // }
             }
             #ifdef QUERYHANDLER
             else if(udph.GetDestinationPort() == probePort+1) {
@@ -212,11 +217,22 @@ SwitchNode::process (Ptr<NetDevice> incomingPort, Ptr<NetDevice> outgoingPort, P
               onQueryPacketReceived(packet, swid, outPortId, st, current_ts);
             } 
             #endif
-            else if(udph.GetDestinationPort() == probePort+2) {
+            else if(udph.GetDestinationPort() == 9997//probePort+2
+            ) {
               // this means we just want to dump the path taken by the packet
-              std::cout << "PATH " << swid << " " << outPortId << std::endl;
+              // std::cout << "PATH " << incomingPort->getGenericId() <<"-" << swid << "-" << outPortId << std::endl;
             }
           packet->AddHeader (udph);
+        } else if((int) iph.GetProtocol () == 6) {
+          TcpHeader hdr;
+          packet->RemoveHeader(hdr);
+            if(hdr.GetDestinationPort() == 9997//probePort+2
+            ) {
+              // this means we just want to dump the path taken by the packet
+              //  std::cout << "PATH " << incomingPort->getGenericId() <<"-" << swid << "-" << outPortId << std::endl;
+            }
+
+          packet->AddHeader(hdr);
         }
 
       packet->AddHeader (iph);

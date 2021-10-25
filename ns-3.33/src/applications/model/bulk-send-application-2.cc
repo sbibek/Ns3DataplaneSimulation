@@ -463,7 +463,7 @@ BulkSendApplication2::QueryResponseHandler (Ptr<Socket> socket)
               // NS_LOG_DEBUG ("DEBUG NodeId=" << m_node->GetIdx ()
               //                               << " { nodeid=" << value.GetNodeId ()
               //                               << " value=" << value.GetValue () << "}");
-              // logger ("debug").add (std::to_string (value.GetNodeId ()), value.GetValue ()).log ();
+              logger ("debug").add (std::to_string (value.GetNodeId ()), value.GetValue ()).log ();
               results.push_back (std::make_tuple (value.GetNodeId (), value.GetValue ()));
             }
         }
@@ -484,8 +484,12 @@ BulkSendApplication2::QueryResponseHandler (Ptr<Socket> socket)
         {
           for (int i = 0; i < m_totalServersToOffload; i++)
             {
-              nodes.push_back (std::get<0> (results.at (i)));
-              _log.add ("node", i);
+              //std::cout << std::get<0> (results.at (i)) << " " << std::get<1> (results.at (i)) << std::flush;
+              // if((int)this->GetNode()->GetIdx() == results.at(i)) continue;
+              int nodeid = std::get<0> (results.at (i));
+              if(nodeid == (int)this->GetNode()->GetIdx()) continue;
+              nodes.push_back (nodeid);
+              _log.add ("->", nodeid);
             }
         }
       else
@@ -498,7 +502,7 @@ BulkSendApplication2::QueryResponseHandler (Ptr<Socket> socket)
               if (selection[g] == NULL)
                 {
                   selection[g] = new int;
-                  _log.add ("node", g);
+                  _log.add ("->", g);
                   nodes.push_back (g);
                 }
             }
@@ -511,7 +515,7 @@ BulkSendApplication2::QueryResponseHandler (Ptr<Socket> socket)
           .add ("Total number of servers to offload", m_totalServersToOffload)
           .log ();
 
-      // _log.log ();
+      _log.log ();
       // means we have results
       Simulator::Schedule (Seconds (0.0), &BulkSendApplication2::DataTransferSequence, this, nodes);
     }

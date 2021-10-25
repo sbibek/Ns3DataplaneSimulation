@@ -14,6 +14,14 @@ SchedulerStore::onSwitchUpdate (ProbeHeader2 header, std::vector<ProbePayload2> 
     {
       switches[header.GetSwid ()][p.GetPortId ()].maxQueueOccupancy = p.GetMaxQueueDepth ();
     }
+//#define SHOW_OUT
+#ifdef SHOW_OUT
+    int swid = header.GetSwid();
+    for(auto p: switches[swid]) {
+      // just for test purposes, we just log the specific switch port occupancy
+      NS_LOG_UNCOND("PROBE_STAT "  << swid << " " << p.first << " " << p.second.maxQueueOccupancy << std::endl);
+    }
+#endif
 }
 
 void
@@ -55,6 +63,14 @@ SchedulerStore::tracePath (uint16_t a)
 std::vector<std::tuple<int, int>>
 SchedulerStore::tracePathWithTuple (uint16_t a, uint16_t selectionStragety)
 {
+//#define SHOW_OUT
+#ifdef SHOW_OUT
+    for(auto p: switches[12]) {
+      // just for test purposes, we just log the specific switch port occupancy
+      NS_LOG_UNCOND("PROBE_STAT " << 12 << " " << p.first << " " << p.second.maxQueueOccupancy << std::endl);
+    }
+#endif
+
   std::vector<std::tuple<int, int>> qs;
   for (int i = topo.minNodeId; i <= topo.maxNodeId; i++)
     {
