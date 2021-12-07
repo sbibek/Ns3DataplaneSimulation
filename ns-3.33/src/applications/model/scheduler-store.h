@@ -6,6 +6,7 @@
 #include "ns3/probe-payload2.h"
 #include "scheduler-topo.h"
 #include <stdlib.h>
+#include <deque>
 
 using namespace ns3;
 bool sortfn(const std::tuple<int, int, int>& a, 
@@ -15,6 +16,12 @@ typedef struct
 {
   int maxQueueOccupancy;
 } portEntry;
+
+typedef struct {
+  int currentTotal;
+  int currentRoundedAvg;
+  std::deque<int> q;
+} portEntryV;
 
 typedef struct
 {
@@ -32,6 +39,7 @@ public:
 
 private:
   std::unordered_map<int, std::unordered_map<int, portEntry>> switches;
+  std::unordered_map<int, std::unordered_map<int, portEntryV>> switchesV;
   SchedulerTopo topo;
 };
 

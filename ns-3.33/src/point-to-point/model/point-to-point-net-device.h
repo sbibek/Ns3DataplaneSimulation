@@ -148,6 +148,7 @@ public:
    * \param p Ptr to the received packet.
    */
   void Receive (Ptr<Packet> p);
+  uint32_t getCurrentQueueOccupancy() ;
 
   // The remaining methods are documented in ns3::NetDevice*
 

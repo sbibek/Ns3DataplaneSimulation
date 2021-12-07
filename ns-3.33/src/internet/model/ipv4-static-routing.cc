@@ -550,6 +550,8 @@ Ipv4StaticRouting::RouteInput  (Ptr<const Packet> p, const Ipv4Header &ipHeader,
   if (rtentry != 0)
     {
       NS_LOG_LOGIC ("Found unicast destination- calling unicast callback");
+      // HERE
+      // std::cout << "Testing \n" << std::flush;
       ucb (rtentry, p, ipHeader);  // unicast forwarding callback
       return true;
     }

@@ -43,6 +43,7 @@
 #include "icmpv4-l4-protocol.h"
 #include "ipv4-interface.h"
 #include "ipv4-raw-socket-impl.h"
+#include "ns3/point-to-point-net-device.h"
 
 namespace ns3 {
 
@@ -968,6 +969,9 @@ Ipv4L3Protocol::SendRealOut (Ptr<Ipv4Route> route,
       return;
     }
   Ptr<NetDevice> outDev = route->GetOutputDevice ();
+
+  // here we know what output device the packet is going out of
+
   int32_t interface = GetInterfaceForDevice (outDev);
   NS_ASSERT (interface >= 0);
   Ptr<Ipv4Interface> outInterface = GetInterface (interface);
@@ -997,15 +1001,26 @@ Ipv4L3Protocol::SendRealOut (Ptr<Ipv4Route> route,
             {
               NS_LOG_LOGIC ("Sending fragment " << *(it->first) );
               CallTxTrace (it->second, it->first, m_node->GetObject<Ipv4> (), interface);
-              outInterface->Send (it->first, it->second, target);
+              // outInterface->Send (it->first, it->second, target);
+              FinalSend(outInterface, outDev, it->second, target, it->first);
             }
         }
       else
         {
           CallTxTrace (ipHeader, packet, m_node->GetObject<Ipv4> (), interface);
-          outInterface->Send (packet, ipHeader, target);
+          // outInterface->Send (packet, ipHeader, target);
+          FinalSend(outInterface, outDev, ipHeader, target, packet);
         }
     }
+}
+
+void Ipv4L3Protocol::FinalSend(Ptr<Ipv4Interface> outInterface, Ptr<NetDevice> outDev, const ns3::Ipv4Header &ipHeader, ns3::Ipv4Address target, Ptr<Packet> packet) {
+
+  Ptr<PointToPointNetDevice> dev = DynamicCast<PointToPointNetDevice>(outDev);
+  // std::cout << "NID " << outDev->GetNode()->GetId() << " Q " << dev->getCurrentQueueOccupancy() << std::endl << std::flush;
+  Packet* pkt = const_cast<Packet*>(GetPointer(packet)); 
+  outDev->GetNode()->process(outDev, pkt, target, (uint64_t) dev->getCurrentQueueOccupancy() );
+  outInterface->Send (packet, ipHeader, target);
 }
 
 // This function analogous to Linux ip_mr_forward()
@@ -1046,11 +1061,12 @@ Ipv4L3Protocol::IpMulticastForward (Ptr<Ipv4MulticastRoute> mrtentry, Ptr<const 
 }
 
 // This function analogous to Linux ip_forward()
+// HERE
 void
 Ipv4L3Protocol::IpForward (Ptr<Ipv4Route> rtentry, Ptr<const Packet> p, const Ipv4Header &header)
 {
   NS_LOG_FUNCTION (this << rtentry << p << header);
-  NS_LOG_LOGIC ("Forwarding logic for node: " << m_node->GetId ());
+  NS_LOG_UNCOND ("Forwarding logic for node: " << m_node->GetId ());
   // Forwarding
   Ipv4Header ipHeader = header;
   Ptr<Packet> packet = p->Copy ();

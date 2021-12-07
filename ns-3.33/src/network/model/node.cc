@@ -32,6 +32,7 @@
 #include "ns3/global-value.h"
 #include "ns3/boolean.h"
 
+
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("Node");
@@ -296,6 +297,7 @@ Node::NonPromiscReceiveFromDevice (Ptr<NetDevice> device, Ptr<const Packet> pack
                                    const Address &from)
 {
   NS_LOG_FUNCTION (this << device << packet << protocol << &from);
+  // std::cout << "- GID " << device->getGenericId()<<std::endl<<std::flush;
   return ReceiveFromDevice (device, packet, protocol, from, device->GetAddress (), NetDevice::PacketType (0), false);
 }
 
@@ -312,8 +314,8 @@ Node::ReceiveFromDevice (Ptr<NetDevice> device, Ptr<const Packet> packet, uint16
                         << ") Packet UID " << packet->GetUid ());
   bool found = false;
 
-  //std::cout << "Node [" << this << "] received packet with UID "<< packet->GetUid() << " from "<< device << std::endl;
 
+                  //std::cout << "Node [" << this << "] received packet with UID "<< packet->GetUid() << " from "<< device << std::endl;
   for (ProtocolHandlerList::iterator i = m_handlers.begin ();
        i != m_handlers.end (); i++)
     {
@@ -325,6 +327,7 @@ Node::ReceiveFromDevice (Ptr<NetDevice> device, Ptr<const Packet> packet, uint16
             {
               if (promiscuous == i->promiscuous)
                 {
+                  //std::cout << "-- OGID" << i->device->getGenericId() << std::endl<<std::flush;
                   i->handler (device, packet, protocol, from, to, packetType);
                   found = true;
                 }
@@ -333,6 +336,7 @@ Node::ReceiveFromDevice (Ptr<NetDevice> device, Ptr<const Packet> packet, uint16
     }
   return found;
 }
+
 void 
 Node::RegisterDeviceAdditionListener (DeviceAdditionListener listener)
 {
@@ -390,5 +394,16 @@ Node::NotifyDeviceAdded (Ptr<NetDevice> device)
     return m_terminalIps;
   }
  
+  void Node::process (Ptr<NetDevice> outgoingPort, Packet *packet, Address dst, uint64_t queue){
+                    NS_LOG_UNCOND("Swid = " << GetId() << " Queue = " << queue);
+            Ipv4Header iph;
+            packet->RemoveHeader (iph);
+            NS_LOG_UNCOND(iph.GetProtocol());
+                }
+
+  void Node::onProbeReceived (Packet *packet, uint32_t swid, uint8_t portId, QueueInfo *stats,
+                 uint64_t current_ts) {
+
+                 }
 
 } // namespace ns3

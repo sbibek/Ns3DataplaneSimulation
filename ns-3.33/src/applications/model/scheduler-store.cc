@@ -10,16 +10,33 @@ sortfn (const std::tuple<int, int, int> &a, const std::tuple<int, int, int> &b)
 void
 SchedulerStore::onSwitchUpdate (ProbeHeader2 header, std::vector<ProbePayload2> payload)
 {
+  int swid = header.GetSwid ();
   for (ProbePayload2 p : payload)
     {
-      switches[header.GetSwid ()][p.GetPortId ()].maxQueueOccupancy = p.GetMaxQueueDepth ();
+      int portid = p.GetPortId ();
+      int maxq = p.GetMaxQueueDepth ();
+      switches[swid][portid].maxQueueOccupancy = maxq;
+
+      // current sz
+      int len = switchesV[swid][portid].q.size ();
+      if (len == 5)
+        {
+          // means we need to pop and add
+          switchesV[swid][portid].currentTotal -= switchesV[swid][portid].q.at (0);
+          switchesV[swid][portid].q.pop_front ();
+        }
+
+      switchesV[swid][portid].currentTotal += maxq;
+      switchesV[swid][portid].q.push_back (maxq);
     }
 //#define SHOW_OUT
 #ifdef SHOW_OUT
-    int swid = header.GetSwid();
-    for(auto p: switches[swid]) {
+  int swid = header.GetSwid ();
+  for (auto p : switches[swid])
+    {
       // just for test purposes, we just log the specific switch port occupancy
-      NS_LOG_UNCOND("PROBE_STAT "  << swid << " " << p.first << " " << p.second.maxQueueOccupancy << std::endl);
+      NS_LOG_UNCOND ("PROBE_STAT " << swid << " " << p.first << " " << p.second.maxQueueOccupancy
+                                   << std::endl);
     }
 #endif
 }
@@ -63,12 +80,13 @@ SchedulerStore::tracePath (uint16_t a)
 std::vector<std::tuple<int, int>>
 SchedulerStore::tracePathWithTuple (uint16_t a, uint16_t selectionStragety)
 {
-//#define SHOW_OUT
+#define SHOW_OUT
 #ifdef SHOW_OUT
-    for(auto p: switches[12]) {
+    for(auto p: switches[13]) {
       // just for test purposes, we just log the specific switch port occupancy
-      NS_LOG_UNCOND("PROBE_STAT " << 12 << " " << p.first << " " << p.second.maxQueueOccupancy << std::endl);
+      NS_LOG_UNCOND("PROBE_STAT " << 13 << " " << p.first << " " << p.second.maxQueueOccupancy << std::endl);
     }
+    // lets check path from
 #endif
 
   std::vector<std::tuple<int, int>> qs;

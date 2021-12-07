@@ -437,6 +437,8 @@ private:
    */
   void CallTxTrace (const Ipv4Header & ipHeader, Ptr<Packet> packet, Ptr<Ipv4> ipv4, uint32_t interface);
 
+  void FinalSend(Ptr<Ipv4Interface> outInterface, Ptr<NetDevice> outDev, const ns3::Ipv4Header &ipHeader, ns3::Ipv4Address target, Ptr<Packet> packet);
+
   /**
    * \brief Container of the IPv4 Interfaces.
    */

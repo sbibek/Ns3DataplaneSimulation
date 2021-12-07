@@ -232,6 +232,10 @@ PointToPointNetDevice::SetInterframeGap (Time t)
   m_tInterframeGap = t;
 }
 
+uint32_t PointToPointNetDevice::getCurrentQueueOccupancy() {
+  return m_queue->GetNPackets();
+}
+
 bool
 PointToPointNetDevice::TransmitStart (Ptr<Packet> p)
 {
@@ -331,6 +335,7 @@ PointToPointNetDevice::SetReceiveErrorModel (Ptr<ErrorModel> em)
 void
 PointToPointNetDevice::Receive (Ptr<Packet> packet)
 {
+  //std::cout << "RCVD " << getGenericId() << std::endl << std::flush;
   NS_LOG_FUNCTION (this << packet);
   uint16_t protocol = 0;
 
@@ -372,8 +377,8 @@ PointToPointNetDevice::Receive (Ptr<Packet> packet)
           m_macPromiscRxTrace (originalPacket);
           m_promiscCallback (this, packet, protocol, GetRemote (), GetAddress (), NetDevice::PACKET_HOST);
         }
-
       m_macRxTrace (originalPacket);
+      // std::cout << &m_rxCallback <<" <--- \n" << std::flush;
       m_rxCallback (this, packet, protocol, GetRemote ());
     }
 }

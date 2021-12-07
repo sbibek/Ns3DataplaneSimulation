@@ -323,7 +323,7 @@ main (int argc, char *argv[])
   gtcpOffloadApp.Stop (Seconds (TOTAL_SIMULATION_TIME_S));
 
   // selection mode : 0 = OPTIMAL, 1 = NEAR, 2 = RANDOM
-  offloadPlans.push_back(std::make_tuple(0, 1, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 21, 50));
+  offloadPlans.push_back(std::make_tuple(0, 1, 1024*1024*2, OF_SELECTION_STRATEGY_OPTIMAL, 16, 50));
   // offloadPlans.push_back(std::make_tuple(5, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 10, 34));
   // offloadPlans.push_back(std::make_tuple(39, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 15, 34));
   // offloadPlans.push_back(std::make_tuple(38, 3, 1024*1024*2, OF_SELECTION_STRATEGY_NEAR, 10, 34));

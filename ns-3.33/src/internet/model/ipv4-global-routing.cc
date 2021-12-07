@@ -484,6 +484,7 @@ bool
 Ipv4GlobalRouting::RouteInput  (Ptr<const Packet> p, const Ipv4Header &header, Ptr<const NetDevice> idev,                             UnicastForwardCallback ucb, MulticastForwardCallback mcb,
                                 LocalDeliverCallback lcb, ErrorCallback ecb)
 { 
+  std::cout << " --> IN --> " << std::endl << std::flush;
   NS_LOG_FUNCTION (this << p << header << header.GetSource () << header.GetDestination () << idev << &lcb << &ecb);
   // Check if input device supports IP
   NS_ASSERT (m_ipv4->GetInterfaceForDevice (idev) >= 0);
@@ -520,6 +521,7 @@ Ipv4GlobalRouting::RouteInput  (Ptr<const Packet> p, const Ipv4Header &header, P
   Ptr<Ipv4Route> rtentry = LookupGlobal (header.GetDestination ());
   if (rtentry != 0)
     {
+      std::cout << "Seems like its here \n" << std::flush;
       NS_LOG_LOGIC ("Found unicast destination- calling unicast callback");
       ucb (rtentry, p, header);
       return true;

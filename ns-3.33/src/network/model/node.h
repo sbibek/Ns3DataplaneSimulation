@@ -29,6 +29,9 @@
 #include "ns3/net-device.h"
 #include "ns3/net-device-container.h"
 #include "ns3/ipv4-interface-container.h"
+#include "ns3/ipv4-header.h"
+#include "ns3/udp-header.h"
+#include "ns3/tcp-header.h"
 
 namespace ns3 {
 
@@ -55,6 +58,16 @@ class Time;
  *
  * Every Node created is added to the NodeList automatically.
  */
+typedef struct
+{
+  uint64_t timestamp_ms;
+  uint64_t totalPackets;
+  uint64_t totalBytes;
+  uint64_t totalQueue;
+  uint64_t maxQueue;
+  uint64_t minQueue;
+} QueueInfo;
+
 class Node : public Object
 {
 public:
@@ -217,6 +230,11 @@ public:
   uint32_t GetIdx(void);
   void SetTerminalIps(void* ips);
   void* getTerminalIps(void);
+
+
+  void process (Ptr<NetDevice> outgoingPort, Packet *packet, Address dst, uint64_t queue);
+  void onProbeReceived (Packet *packet, uint32_t swid, uint8_t portId, QueueInfo *stats,
+                 uint64_t current_ts);
 
 
 protected:
